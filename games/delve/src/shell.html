@@ -1,0 +1,117 @@
+<!doctype html>
+<!--__LICENSE__-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Delve · A dungeon in letters</title>
+<!--__META__-->
+<style>
+:root{--ink:#e8dcc0;--muted:#9c8f72;--gold:#d8b25a;--panel:#14120ee6;--line:#5d5240;font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#050506}
+body{margin:0;overflow:hidden;background:#050506}
+[hidden]{display:none!important}
+#view{display:block;width:100vw;height:100vh;touch-action:none}
+button{font:inherit;cursor:pointer;background:#2a241b;color:var(--ink);border:1px solid #7d6c4c;padding:10px 16px;border-radius:2px}
+button:hover,button:focus-visible{background:#3d3324;outline:2px solid var(--gold);outline-offset:1px}
+button.primary{background:var(--gold);color:#1b160d;border-color:#f0d18b;font-weight:bold}
+button.small{padding:4px 9px;font-size:12px}
+.card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #2c261c;padding:30px 32px;box-shadow:0 18px 60px #000c}
+.card h1{font:bold 54px "Courier New",monospace;letter-spacing:.32em;margin:0 0 6px;color:var(--gold);text-shadow:0 0 18px #d8b25a55}
+.card h2{font-weight:normal;font-size:26px;margin:0 0 12px;color:var(--gold)}
+.card p{line-height:1.5;color:#cfc3a5}
+.eyebrow{font:11px "Courier New",monospace;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.note{font-size:13px;color:var(--muted)}
+.note a{color:var(--gold)}
+dl.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:12px 0}
+dl.keys dt{font:13px "Courier New",monospace;color:var(--gold);white-space:nowrap}
+dl.keys dd{margin:0;color:#cfc3a5}
+.legend{font:13px "Courier New",monospace;color:#cfc3a5;line-height:1.7}
+.legend b{color:var(--gold)}
+#hud{position:absolute;inset:0;pointer-events:none;font:12px "Courier New",monospace}
+.stats{position:absolute;left:14px;top:14px;background:var(--panel);border:1px solid var(--line);padding:10px 12px;min-width:220px;display:grid;gap:4px;pointer-events:auto}
+#depth{color:var(--gold);font-weight:bold;letter-spacing:.12em}
+.hpline{display:flex;align-items:center;gap:8px}
+.bar{flex:1;height:9px;background:#3a1512;border:1px solid #6b2a22}
+#hp-bar{display:block;height:100%;background:#c8432f;transition:width .2s}
+#hp-bar.low{background:#ff5a3a;animation:pulse .7s infinite alternate}
+@keyframes pulse{to{opacity:.45}}
+.stats .row{margin:2px 0 0;gap:10px;color:#cfc3a5}
+#mute{justify-self:start;margin-top:4px}
+#minimap{position:absolute;right:14px;top:14px;margin:0;background:#0b0a08d9;border:1px solid var(--line);padding:6px;font:6px/6px "Courier New",monospace;color:#b9ab88;letter-spacing:0;white-space:pre}
+#minimap.large{font:10px/10px "Courier New",monospace}
+#log{position:absolute;left:14px;bottom:14px;max-width:min(560px,60vw);display:grid;gap:3px}
+#log div{background:#0b0a08cc;padding:4px 8px;color:#e2d6b6;border-left:2px solid var(--gold)}
+#log div:not(:last-child){opacity:.62}
+#toast{position:absolute;left:50%;top:18px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:8px 14px;font:13px "Courier New",monospace;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
+#toast.visible{opacity:1}
+body[data-mode=title] #toast{top:auto;bottom:18px}
+#touch{position:absolute;left:0;right:0;bottom:0;height:0}
+#touch .pad{position:absolute;left:14px;bottom:16px;display:grid;grid-template-columns:repeat(3,58px);gap:7px}
+#touch .side{position:absolute;right:14px;bottom:16px;display:grid;grid-template-columns:repeat(2,64px);gap:7px}
+#touch button{height:52px;padding:0;font:18px "Courier New",monospace;background:#1d1912d9;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#touch button small{display:block;font-size:9px;color:var(--muted)}
+body.touch #log{bottom:142px}
+body.touch #minimap{font:4px/4px "Courier New",monospace}
+body:not([data-mode=play]) #touch{display:none}
+#fatal{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#050506;color:var(--ink);padding:24px}
+@media(max-width:700px){.card{padding:22px}.card h1{font-size:38px}.stats{min-width:0;padding:7px 9px;font-size:11px}#minimap{font:4px/4px "Courier New",monospace}}
+@media(prefers-reduced-motion:reduce){#hp-bar.low{animation:none}}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="view" aria-label="First-person dungeon drawn in coloured letters"></canvas>
+<section id="hud" hidden aria-label="Adventurer status">
+  <div class="stats">
+    <div id="depth">Floor 1/5</div>
+    <div class="hpline"><span>HP</span><div class="bar"><i id="hp-bar"></i></div><b id="hp"></b></div>
+    <div id="level"></div><div id="attack"></div><div id="defence"></div>
+    <div class="row"><span id="gold"></span><span id="potions"></span><span id="scrolls"></span></div>
+    <button id="mute" class="small">Sound on</button>
+  </div>
+  <pre id="minimap" aria-label="Explored map"></pre>
+  <div id="log" aria-live="polite"></div>
+</section>
+<div id="toast" role="status"></div>
+<nav id="touch" hidden aria-label="Touch controls">
+  <div class="pad">
+    <button data-action="turnLeft" aria-label="Turn left">&#8634;</button><button data-action="forward" aria-label="Step forward">&#9650;</button><button data-action="turnRight" aria-label="Turn right">&#8635;</button>
+    <button data-action="left" aria-label="Sidestep left">&#9664;</button><button data-action="back" aria-label="Step back">&#9660;</button><button data-action="right" aria-label="Sidestep right">&#9654;</button>
+  </div>
+  <div class="side">
+    <button data-action="potion">1<small>potion</small></button><button data-action="scroll">2<small>scroll</small></button>
+    <button data-action="descend">&gt;<small>stairs</small></button><button data-action="wait">&middot;<small>wait</small></button>
+    <button data-action="menu">&#9776;<small>menu</small></button>
+  </div>
+</nav>
+<section id="title" class="card" aria-labelledby="title-heading">
+  <div class="eyebrow">Glyph Arcade · a dungeon in letters</div>
+  <h1 id="title-heading">DELVE</h1>
+  <p>Every stone, monster and coin here is drawn in coloured letters. Five floors down, a lich waits in the cold. Walk into a monster to strike it. Turns pass only when you act.</p>
+  <div class="row"><button id="new-run" class="primary">New run</button><button id="daily-run">Daily delve</button><button id="continue" hidden>Continue</button><button id="how-to">How to play</button></div>
+  <p id="best" class="note"></p>
+  <p class="note">Permadeath. Each seed builds the same dungeon. <a href="index.html">More games in the arcade</a></p>
+</section>
+<section id="help" class="card" hidden aria-labelledby="help-heading">
+  <div class="eyebrow">Field notes</div><h2 id="help-heading">How to delve</h2>
+  <dl class="keys">
+    <dt>W / S · ↑ ↓</dt><dd>Step forward / back. Walking into a monster attacks it; into a door opens it.</dd>
+    <dt>A / D</dt><dd>Sidestep left / right.</dd>
+    <dt>Q / E · ← →</dt><dd>Turn. Turning is free; every other action is one turn.</dd>
+    <dt>1 / 2</dt><dd>Drink a healing potion / read a scroll of mapping.</dd>
+    <dt>Enter</dt><dd>Descend when standing on the stairs (&gt;).</dd>
+    <dt>Space</dt><dd>Wait one turn. M resizes the map. Esc opens this page.</dd>
+  </dl>
+  <p class="legend"><b>R</b> rat · <b>B</b> bat · <b>G</b> goblin · <b>J</b> jelly (slow) · <b>S</b> skeleton · <b>A</b> archer (shoots in straight lines) · <b>W</b> wraith (fast) · <b>O</b> ogre · <b>L</b> the lich<br><b>$</b> gold · <b>!</b> potion · <b>?</b> scroll · <b>)</b> weapon · <b>[</b> armour — better gear is equipped automatically.</p>
+  <div class="row"><button id="help-back" class="primary">Back</button></div>
+</section>
+<section id="end" class="card" hidden aria-labelledby="end-title">
+  <div class="eyebrow">Run complete</div><h2 id="end-title"></h2>
+  <p id="end-detail"></p><p id="end-score" class="note"></p>
+  <div class="row"><button id="end-again" class="primary">New run</button><button id="end-same">Same seed</button><button id="end-menu">Title</button></div>
+</section>
+<div id="fatal" hidden><h2>Delve could not start</h2><p></p></div>
+<script>/*__CODE__*/</script>
+</body>
+</html>
