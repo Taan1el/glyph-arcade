@@ -34,15 +34,20 @@ function buildGame(game,{out=path.join(root,'dist'),siteUrl=''}={}){
 }
 
 function buildLauncher({out=path.join(root,'dist'),siteUrl=''}={}){
+  fs.mkdirSync(out,{recursive:true});
   const template=fs.readFileSync(path.join(root,'site/index.html'),'utf8');
   const hasPreview=id=>fs.existsSync(path.join(out,'previews',id+'.png'));
   const card=(game,href,external)=>`<a class="game" href="${escape(href)}"${external?' rel="noopener"':''}>
-  ${hasPreview(game.id)?`<img src="previews/${game.id}.png" alt="" loading="lazy">`:`<div class="placeholder">${escape(game.title[0])}</div>`}
+  ${hasPreview(game.id)?`<img src="previews/${game.id}.png" alt="${escape(game.title)} gameplay preview" loading="lazy">`:`<div class="placeholder" aria-hidden="true">${escape(game.title[0])}</div>`}
   <h2>${escape(game.title)}</h2><p>${escape(game.tagline)}</p><span>${external?'Play on its own site':'Play now'}</span></a>`;
   const cards=[...GAMES.map(g=>card(g,g.id+'.html',false)),...EXTERNAL.map(g=>card(g,g.href,true))].join('\n');
   const base=siteUrl.replace(/\/?$/,'/');
   const html=template.replace('<!--__GAMES__-->',()=>cards).replace('<!--__META__-->',()=>meta({title:'Glyph Arcade',description:'Small browser games drawn entirely in coloured letters. Each one is a single offline HTML file.',image:siteUrl&&hasPreview('delve')?`${base}previews/delve.png`:'',url:siteUrl?base:''}));
   fs.writeFileSync(path.join(out,'index.html'),html);fs.writeFileSync(path.join(out,'.nojekyll'),'');
+  for(const asset of ['manifest.webmanifest','icon.svg','sw.js']){
+    const src=path.join(root,'site',asset);
+    if(fs.existsSync(src))fs.copyFileSync(src,path.join(out,asset));
+  }
 }
 
 if(require.main===module){
