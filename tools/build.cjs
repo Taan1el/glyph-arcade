@@ -4,7 +4,9 @@ const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const GAMES=[
   {id:'delve',title:'Delve',tagline:'A first-person roguelike where every monster is a giant letter.',
-   parts:['engine/glyph-engine.js','games/delve/src/rules.js','games/delve/src/scene.js','games/delve/src/app.js'],shell:'games/delve/src/shell.html'}
+   parts:['engine/glyph-engine.js','games/delve/src/rules.js','games/delve/src/scene.js','games/delve/src/app.js'],shell:'games/delve/src/shell.html'},
+  {id:'inkfire',title:'Inkfire',tagline:'A fast-paced first-person arena shooter with procedural glyph sprites.',
+   parts:['engine/glyph-engine.js','engine/glyph-art.js','games/inkfire/src/art.js','games/inkfire/src/rules.js','games/inkfire/src/scene.js','games/inkfire/src/app.js'],shell:'games/inkfire/src/shell.html'}
 ];
 const EXTERNAL=[
   {id:'next-stop',title:'Next Stop',tagline:'A rural steam railway in coloured letters. Drive, deliver and explore a valley.',href:'https://taan1el.github.io/next-stop/'}

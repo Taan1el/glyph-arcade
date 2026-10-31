@@ -8,7 +8,7 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "build": "node tools/build.cjs",
-    "test": "node games/delve/test/rules.test.cjs",
+    "test": "node games/delve/test/rules.test.cjs && node games/inkfire/test/rules.test.cjs",
     "test:browser": "node tests/browser-smoke.cjs",
     "previews": "node tools/capture-previews.cjs"
   },

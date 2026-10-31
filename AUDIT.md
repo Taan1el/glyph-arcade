@@ -391,3 +391,11 @@ nothing added to commit but untracked files present (use "git add" to track)
   - `npm test`: Exit code 0 (8/8 Delve rules tests passed including 60 bot simulation runs).
   - `npm run test:browser`: Exit code 0 (Chromium smoke test passed, `turn: 4, hp: 20, cells: 12`).
 - Working tree clean on branch `feature/big-pass`.
+
+### Phase 2 Status: COMPLETE
+- Implemented `games/inkfire/src/rules.js` with pure deterministic real-time FPS simulation, guaranteed solvable red/blue keycard progression, 4 weapons (`pistol`, `shotgun`, `chaingun`, `launcher`), 5 monster species (`trooper`, `spitter`, `brute`, `wisp`, `titan`), explosive slime barrels, pickups, and JSON save/restore validation.
+- Added comprehensive unit test suite in `games/inkfire/test/rules.test.cjs` (10/10 checks passing, including 40-seed progression solvability and 50 headless bot runs).
+- Implemented `games/inkfire/src/scene.js` rendering 3D walls, doors, dynamic lighting, camera-facing billboards from the `InkArt` procedural sprite atlas, and first-person weapon viewmodels.
+- Implemented `games/inkfire/src/app.js` and `games/inkfire/src/shell.html` with title screen, playable loop, win/lose states, `localStorage` persistence, keyboard/mouse/touch controls, pause modal, and Web Audio synthesis with mute toggle.
+- Wired `inkfire` into `tools/build.cjs` (`dist/inkfire.html`, 121,142 bytes) and `package.json`.
+- End-of-Phase Ritual executed (`npm run build`, `npm test`, `npm run test:browser`) with 0 errors.
