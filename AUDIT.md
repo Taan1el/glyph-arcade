@@ -415,3 +415,10 @@ nothing added to commit but untracked files present (use "git add" to track)
 - Extended `tools/capture-previews.cjs` (`npm run previews`) to generate preview screenshots for both `dist/previews/delve.png` and `dist/previews/inkfire.png` and refresh the launcher.
 - Extended `tests/browser-smoke.cjs` (`npm run test:browser`) to verify the portal at 360px, boot and play `delve.html`, boot and play `inkfire.html` (including pause/resume and mute), and fail on any console or page error.
 - End-of-Phase Ritual executed (`npm run build`, `npm run previews`, `npm test`, `npm run test:browser`) with 0 errors.
+
+### Phase 5 Status: COMPLETE
+- Added `tools/check-license.cjs` to verify MIT license preservation in `LICENSE`, `package.json`, and all built HTML bundles in `dist/`, and wired it into `npm test`.
+- Updated `.github/workflows/pages.yml` so `npm run build`, `npm test`, and `npm run test:browser` execute before deploying to GitHub Pages.
+- Updated `README.md` with game descriptions, Delve and Inkfire control tables, build/test instructions, and an 8-step guide for adding a new game.
+- Authored `CHANGELOG.md` documenting all additions, bug fixes, engine optimizations, and quality checks.
+- End-of-Phase Ritual executed (`npm run build`, `npm test`, `npm run test:browser`, `npm run previews`) with 0 errors.
