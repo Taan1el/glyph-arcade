@@ -17,7 +17,7 @@
     // Shade: lighten top-left facing edges, darken bottom-right, then a dark outline.
     finish({outline=[.06,.05,.05],shade=true}={}){
       if(shade){const copy=this.pixels.slice();for(let y=0;y<this.height;y++)for(let x=0;x<this.width;x++){const c=copy[y*this.width+x];if(!c||c.glow)continue;
-        const lit=!copy[(y-1)*this.width+x]||!copy[y*this.width+x-1],dark=!copy[(y+1)*this.width+x]||!copy[y*this.width+x+1];
+        const lit=(y===0||!copy[(y-1)*this.width+x])||(x===0||!copy[y*this.width+x-1]),dark=(y===this.height-1||!copy[(y+1)*this.width+x])||(x===this.width-1||!copy[y*this.width+x+1]);
         if(lit&&!dark)this.pixels[y*this.width+x]=Object.assign(c.map(v=>Math.min(1,v*1.28+.05)),{glow:c.glow});else if(dark&&!lit)this.pixels[y*this.width+x]=Object.assign(c.map(v=>v*.62),{glow:c.glow});}}
       if(outline){const copy=this.pixels.slice();for(let y=0;y<this.height;y++)for(let x=0;x<this.width;x++){if(copy[y*this.width+x])continue;
         const near=[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const c=x+dx>=0&&x+dx<this.width&&y+dy>=0&&y+dy<this.height?copy[(y+dy)*this.width+x+dx]:null;return c&&!c.glow;});

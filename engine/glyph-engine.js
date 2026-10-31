@@ -169,10 +169,12 @@
     return value;
   }
 
+  const DEFAULT_TINT = Object.freeze([0, 0, 0, 0]);
+
   class GlyphEngine {
     constructor(canvas,{sceneSource,uniforms=[],far=100}={}){
       if(!sceneSource)throw new Error('GlyphEngine needs a scene shader.');
-      this.canvas=canvas;this.far=far;this.destroyed=false;this.lost=false;this.extraTextures=new Map();
+      this.canvas=canvas;this.far=far;this.destroyed=false;this.lost=false;this.extraTextures=new Map();this._extraList=[];
       this.gl=canvas.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,premultipliedAlpha:false,powerPreference:'high-performance'});
       if(!this.gl)throw new Error('This game needs WebGL2. Enable hardware acceleration or use a current browser.');
       const gl=this.gl;
@@ -187,44 +189,47 @@
       this.cellTextures=[texture(gl),texture(gl),texture(gl)];this.framebuffer=gl.createFramebuffer();
       this.cellSize=[8,12];this.columns=1;this.rows=1;this.width=1;this.height=1;
       this._lostHandler=event=>{event.preventDefault();this.lost=true;};
+      this._restoredHandler=()=>{this.lost=false;};
       canvas.addEventListener('webglcontextlost',this._lostHandler);
+      canvas.addEventListener('webglcontextrestored',this._restoredHandler);
     }
     // Upload an integer texture (e.g. a tile map) that the scene samples by name.
     setTexture(name,unitIndex,width,height,data){
       const gl=this.gl;let value=this.extraTextures.get(name);
-      if(!value){value=texture(gl);this.extraTextures.set(name,value);}
+      if(!value){value=texture(gl);value.name=name;this.extraTextures.set(name,value);this._extraList.push(value);}
       gl.bindTexture(gl.TEXTURE_2D,value);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
       gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8UI,width,height,0,gl.RGBA_INTEGER,gl.UNSIGNED_BYTE,data);
       value.unitIndex=unitIndex;
     }
     resize(width,height,cellSize=this.cellSize){
-      this.width=Math.max(1,Math.round(width));this.height=Math.max(1,Math.round(height));this.cellSize=cellSize.slice();
+      this.width=Math.max(1,Math.round(width));this.height=Math.max(1,Math.round(height));
+      this.cellSize[0]=cellSize[0];this.cellSize[1]=cellSize[1];
       this.columns=Math.max(1,Math.ceil(this.width/cellSize[0]));this.rows=Math.max(1,Math.ceil(this.height/cellSize[1]));
       this.dpr=Math.min(2,Math.max(1,global.devicePixelRatio||1));
       this.canvas.width=Math.round(this.width*this.dpr);this.canvas.height=Math.round(this.height*this.dpr);
       const gl=this.gl;gl.bindFramebuffer(gl.FRAMEBUFFER,this.framebuffer);
-      this.cellTextures.forEach((value,i)=>{gl.bindTexture(gl.TEXTURE_2D,value);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8UI,this.columns,this.rows,0,gl.RGBA_INTEGER,gl.UNSIGNED_BYTE,null);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0+i,gl.TEXTURE_2D,value,0);});
+      for(let i=0;i<3;i++){const value=this.cellTextures[i];gl.bindTexture(gl.TEXTURE_2D,value);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8UI,this.columns,this.rows,0,gl.RGBA_INTEGER,gl.UNSIGNED_BYTE,null);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0+i,gl.TEXTURE_2D,value,0);}
       gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1,gl.COLOR_ATTACHMENT2]);
       if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)throw new Error('Character-cell framebuffer is incomplete on this GPU.');
       gl.bindFramebuffer(gl.FRAMEBUFFER,null);
     }
     // setUniforms(gl, locations) sets the game's own scene uniforms.
-    render(setUniforms,{time=0,ink=true,tint=[0,0,0,0],dissolve=0}={}){
+    render(setUniforms,{time=0,ink=true,tint=DEFAULT_TINT,dissolve=0}={}){
       if(this.destroyed||this.lost)return;
       const gl=this.gl;gl.bindVertexArray(this.vao);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);
       gl.bindFramebuffer(gl.FRAMEBUFFER,this.framebuffer);gl.viewport(0,0,this.columns,this.rows);gl.useProgram(this.sceneProgram);
       const s=this.sceneUniforms;
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.maskTexture);gl.uniform1i(s.masks,0);
-      for(const [name,value] of this.extraTextures){gl.activeTexture(gl.TEXTURE0+value.unitIndex);gl.bindTexture(gl.TEXTURE_2D,value);if(s[name])gl.uniform1i(s[name],value.unitIndex);}
-      gl.uniform2f(s.viewport,this.width,this.height);gl.uniform2fv(s.cellSize,this.cellSize);gl.uniform1f(s.time,time);gl.uniform1f(s.far,this.far);
+      for(let i=0;i<this._extraList.length;i++){const value=this._extraList[i];gl.activeTexture(gl.TEXTURE0+value.unitIndex);gl.bindTexture(gl.TEXTURE_2D,value);const loc=s[value.name];if(loc)gl.uniform1i(loc,value.unitIndex);}
+      gl.uniform2f(s.viewport,this.width,this.height);gl.uniform2f(s.cellSize,this.cellSize[0],this.cellSize[1]);gl.uniform1f(s.time,time);gl.uniform1f(s.far,this.far);
       setUniforms(gl,s);
       gl.drawArrays(gl.TRIANGLES,0,3);
       gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.useProgram(this.displayProgram);
       const d=this.displayUniforms;
-      this.cellTextures.forEach((value,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,value);});
+      for(let i=0;i<3;i++){gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,this.cellTextures[i]);}
       gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,this.maskTexture);
       gl.uniform1i(d.records,0);gl.uniform1i(d.foreground,1);gl.uniform1i(d.background,2);gl.uniform1i(d.masks,3);
-      gl.uniform2f(d.viewport,this.width,this.height);gl.uniform2fv(d.cellSize,this.cellSize);gl.uniform2f(d.physical,this.canvas.width,this.canvas.height);
+      gl.uniform2f(d.viewport,this.width,this.height);gl.uniform2f(d.cellSize,this.cellSize[0],this.cellSize[1]);gl.uniform2f(d.physical,this.canvas.width,this.canvas.height);
       gl.uniform2i(d.grid,this.columns,this.rows);gl.uniform1i(d.ink,ink?1:0);gl.uniform1f(d.far,this.far);gl.uniform4fv(d.tint,tint);gl.uniform1f(d.dissolve,dissolve);gl.uniform1f(d.time,time);
       gl.drawArrays(gl.TRIANGLES,0,3);
     }
@@ -237,10 +242,12 @@
       return{columns:this.columns,rows:this.rows,glyphs,materials};
     }
     destroy(){
-      if(this.destroyed)return;this.destroyed=true;this.canvas.removeEventListener('webglcontextlost',this._lostHandler);
+      if(this.destroyed)return;this.destroyed=true;
+      this.canvas.removeEventListener('webglcontextlost',this._lostHandler);
+      this.canvas.removeEventListener('webglcontextrestored',this._restoredHandler);
       const gl=this.gl;if(this.lost)return;
       gl.deleteProgram(this.sceneProgram);gl.deleteProgram(this.displayProgram);gl.deleteVertexArray(this.vao);gl.deleteFramebuffer(this.framebuffer);
-      for(const value of [this.maskTexture,...this.cellTextures,...this.extraTextures.values()])gl.deleteTexture(value);
+      for(const value of [this.maskTexture,...this.cellTextures,...this._extraList])gl.deleteTexture(value);
     }
   }
   GlyphEngine.GLYPHS=GLYPHS;
