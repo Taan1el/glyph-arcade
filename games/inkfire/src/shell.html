@@ -1,0 +1,150 @@
+<!doctype html>
+<!--__LICENSE__-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Inkfire · Arena shooter in letters</title>
+<!--__META__-->
+<style>
+:root{--ink:#e8dcc0;--muted:#9c8f72;--gold:#ff9a1e;--panel:#141110e6;--line:#644a38;font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#050506}
+body{margin:0;overflow:hidden;background:#050506}
+[hidden]{display:none!important}
+#view{display:block;width:100vw;height:100vh;touch-action:none}
+button{font:inherit;cursor:pointer;background:#2a201b;color:var(--ink);border:1px solid #855e44;padding:10px 16px;border-radius:2px}
+button:hover,button:focus-visible{background:#3d2d24;outline:2px solid var(--gold);outline-offset:1px}
+button.primary{background:var(--gold);color:#1b1108;border-color:#ffc470;font-weight:bold}
+button.small{padding:4px 9px;font-size:12px}
+.card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(540px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #2c201a;padding:30px 32px;box-shadow:0 18px 60px #000c}
+.card h1{font:bold 50px "Courier New",monospace;letter-spacing:.26em;margin:0 0 6px;color:var(--gold);text-shadow:0 0 18px #ff9a1e55}
+.card h2{font-weight:normal;font-size:26px;margin:0 0 12px;color:var(--gold)}
+.card p{line-height:1.5;color:#cfc3a5}
+.eyebrow{font:11px "Courier New",monospace;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.note{font-size:13px;color:var(--muted)}
+.note a{color:var(--gold)}
+dl.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:12px 0}
+dl.keys dt{font:13px "Courier New",monospace;color:var(--gold);white-space:nowrap}
+dl.keys dd{margin:0;color:#cfc3a5}
+#hud{position:absolute;inset:0;pointer-events:none;font:12px "Courier New",monospace}
+.stats{position:absolute;left:14px;top:14px;background:var(--panel);border:1px solid var(--line);padding:10px 12px;min-width:240px;display:grid;gap:5px;pointer-events:auto}
+.hpline{display:flex;align-items:center;gap:8px}
+.bar{flex:1;height:9px;background:#3a1512;border:1px solid #6b2a22}
+.bar.arm{background:#12283a;border-color:#22526b}
+#hp-bar{display:block;height:100%;background:#d83b28;transition:width .15s}
+#hp-bar.low{background:#ff5a3a;animation:pulse .7s infinite alternate}
+#armour-bar{display:block;height:100%;background:#3fa0e8;transition:width .15s}
+@keyframes pulse{to{opacity:.45}}
+#weapon{color:var(--gold);font-weight:bold}
+.stats .row{margin:2px 0 0;gap:10px;color:#cfc3a5}
+#crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:bold 16px "Courier New",monospace;color:#ff9a1eaa;pointer-events:none}
+#minimap{position:absolute;right:14px;top:14px;margin:0;background:#0b0a08d9;border:1px solid var(--line);padding:6px;font:7px/7px "Courier New",monospace;color:#d6b898;letter-spacing:0;white-space:pre}
+#minimap.large{font:10px/10px "Courier New",monospace}
+#log{position:absolute;left:14px;bottom:14px;max-width:min(560px,60vw);display:grid;gap:3px}
+#log div{background:#0b0a08cc;padding:4px 8px;color:#e2d6b6;border-left:2px solid var(--gold)}
+#log div:not(:last-child){opacity:.62}
+#toast{position:absolute;left:50%;top:18px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:8px 14px;font:13px "Courier New",monospace;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
+#toast.visible{opacity:1}
+body[data-mode=title] #toast{top:auto;bottom:18px}
+#touch{position:absolute;left:0;right:0;bottom:0;height:0}
+#touch .pad{position:absolute;left:14px;bottom:16px;display:grid;grid-template-columns:repeat(3,58px);gap:7px}
+#touch .side{position:absolute;right:14px;bottom:16px;display:grid;grid-template-columns:repeat(2,64px);gap:7px}
+#touch button{height:52px;padding:0;font:16px "Courier New",monospace;background:#1d1612d9;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#touch button small{display:block;font-size:9px;color:var(--muted)}
+body.touch #log{bottom:142px}
+body:not([data-mode=play]) #touch{display:none}
+#fatal{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#050506;color:var(--ink);padding:24px}
+@media(max-width:700px){.card{padding:22px}.card h1{font-size:36px}.stats{min-width:0;padding:7px 9px;font-size:11px}#minimap{font:5px/5px "Courier New",monospace}}
+@media(prefers-reduced-motion:reduce){#hp-bar.low{animation:none}}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="view" aria-label="First-person arena shooter drawn in coloured letters"></canvas>
+<section id="hud" hidden aria-label="Combat HUD">
+  <div class="stats">
+    <div class="hpline"><span>HP</span><div class="bar"><i id="hp-bar"></i></div><b id="hp">100/100</b></div>
+    <div class="hpline"><span>ARM</span><div class="bar arm"><i id="armour-bar"></i></div><b id="armour">25</b></div>
+    <div id="weapon"></div>
+    <div class="row"><span id="ammo"></span><span id="keys"></span></div>
+    <div class="row"><span id="score"></span><span id="kills"></span></div>
+    <div class="row">
+      <button id="mute" class="small" type="button">Sound on</button>
+      <button id="pause-btn" class="small" type="button">Pause</button>
+    </div>
+  </div>
+  <div id="crosshair" aria-hidden="true">+</div>
+  <pre id="minimap" aria-label="Sector radar"></pre>
+  <div id="log" aria-live="polite"></div>
+</section>
+<div id="toast" role="status"></div>
+<nav id="touch" hidden aria-label="Touch controls">
+  <div class="pad">
+    <button data-hold="turnLeft" aria-label="Turn left">&#8634;</button>
+    <button data-hold="forward" aria-label="Move forward">&#9650;</button>
+    <button data-hold="turnRight" aria-label="Turn right">&#8635;</button>
+    <button data-hold="left" aria-label="Strafe left">&#9664;</button>
+    <button data-hold="back" aria-label="Move back">&#9660;</button>
+    <button data-hold="right" aria-label="Strafe right">&#9654;</button>
+  </div>
+  <div class="side">
+    <button data-hold="shoot">FIRE<small>shoot</small></button>
+    <button data-action="use">USE<small>door</small></button>
+    <button data-action="weapon1">1<small>pistol</small></button>
+    <button data-action="weapon2">2<small>shotgun</small></button>
+    <button data-action="weapon3">3<small>chaingun</small></button>
+    <button data-action="pause">&#9776;<small>pause</small></button>
+  </div>
+</nav>
+<section id="title" class="card" aria-labelledby="title-heading">
+  <div class="eyebrow">Glyph Arcade · fast FPS in coloured letters</div>
+  <h1 id="title-heading">INKFIRE</h1>
+  <p>Blast through a procedurally generated bunker rendered entirely in shaded ASCII glyphs. Collect the Red and Blue keycards, detonate slime barrels, bring down the cybernetic Titan, and reach the exit pad.</p>
+  <div class="row">
+    <button id="new-run" class="primary" type="button">New run</button>
+    <button id="daily-run" type="button">Daily sector</button>
+    <button id="continue" type="button" hidden>Continue</button>
+    <button id="how-to" type="button">How to play</button>
+  </div>
+  <p id="best" class="note"></p>
+  <p class="note">Real-time combat. Every sprite is drawn in code and shaded as letters. <a href="index.html">More games in the arcade</a></p>
+</section>
+<section id="pause" class="card" hidden aria-labelledby="pause-heading">
+  <div class="eyebrow">Game Paused</div>
+  <h2 id="pause-heading">Sector on hold</h2>
+  <p>Your progress in this sector is automatically saved in your browser.</p>
+  <div class="row">
+    <button id="resume-btn" class="primary" type="button">Resume</button>
+    <button id="pause-help" type="button">Controls</button>
+    <button id="pause-restart" type="button">Restart sector</button>
+    <button id="pause-title" type="button">Title screen</button>
+  </div>
+</section>
+<section id="help" class="card" hidden aria-labelledby="help-heading">
+  <div class="eyebrow">Tactical manual</div>
+  <h2 id="help-heading">How to play Inkfire</h2>
+  <dl class="keys">
+    <dt>W / S · ↑ ↓</dt><dd>Move forward / backward.</dd>
+    <dt>A / D</dt><dd>Strafe left / right.</dd>
+    <dt>Q / E · ← → · Mouse</dt><dd>Turn left / right (click view for mouse look).</dd>
+    <dt>Space / F / Click</dt><dd>Fire current weapon.</dd>
+    <dt>1 / 2 / 3 / 4</dt><dd>Switch weapons: Pistol, Shotgun, Chaingun, Rocket Launcher.</dd>
+    <dt>P / Esc</dt><dd>Pause game. M resizes the radar map.</dd>
+  </dl>
+  <div class="row"><button id="help-back" class="primary" type="button">Back</button></div>
+</section>
+<section id="end" class="card" hidden aria-labelledby="end-title">
+  <div class="eyebrow">Run complete</div>
+  <h2 id="end-title"></h2>
+  <p id="end-detail"></p>
+  <p id="end-score" class="note"></p>
+  <div class="row">
+    <button id="end-again" class="primary" type="button">New run</button>
+    <button id="end-same" type="button">Same seed</button>
+    <button id="end-menu" type="button">Title</button>
+  </div>
+</section>
+<div id="fatal" hidden><h2>Inkfire could not start</h2><p></p></div>
+<script>/*__CODE__*/</script>
+</body>
+</html>
