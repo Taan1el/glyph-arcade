@@ -408,3 +408,10 @@ nothing added to commit but untracked files present (use "git add" to track)
 - Fixed portcullis door raising animation bypass in `games/delve/src/scene.js` and eliminated per-frame allocations in `DelveView.draw()` and `DelveApp.frame()`.
 - Expanded `games/delve/test/rules.test.cjs` from 8 to 12 test suites covering ranged cooldowns, slow/fast/door monster traits, boss victory, item/action edge cases, corrupt save rejection, and `GlyphArt` boundary shading.
 - End-of-Phase Ritual executed (`npm run build`, `npm test`, `npm run test:browser`) with 0 errors.
+
+### Phase 4 Status: COMPLETE
+- Upgraded `site/index.html` into an accessible, responsive arcade portal (360px+ mobile layout without horizontal overflow, skip-to-games link, explicit `:focus-visible` outlines, WCAG AA+ footer contrast `#a89a7c`, and `prefers-reduced-motion` support).
+- Added PWA web app manifest (`site/manifest.webmanifest`), vector icon (`site/icon.svg`), and offline cache-first service worker (`site/sw.js`), wired into `tools/build.cjs`.
+- Extended `tools/capture-previews.cjs` (`npm run previews`) to generate preview screenshots for both `dist/previews/delve.png` and `dist/previews/inkfire.png` and refresh the launcher.
+- Extended `tests/browser-smoke.cjs` (`npm run test:browser`) to verify the portal at 360px, boot and play `delve.html`, boot and play `inkfire.html` (including pause/resume and mute), and fail on any console or page error.
+- End-of-Phase Ritual executed (`npm run build`, `npm run previews`, `npm test`, `npm run test:browser`) with 0 errors.
