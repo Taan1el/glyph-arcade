@@ -399,3 +399,12 @@ nothing added to commit but untracked files present (use "git add" to track)
 - Implemented `games/inkfire/src/app.js` and `games/inkfire/src/shell.html` with title screen, playable loop, win/lose states, `localStorage` persistence, keyboard/mouse/touch controls, pause modal, and Web Audio synthesis with mute toggle.
 - Wired `inkfire` into `tools/build.cjs` (`dist/inkfire.html`, 121,142 bytes) and `package.json`.
 - End-of-Phase Ritual executed (`npm run build`, `npm test`, `npm run test:browser`) with 0 errors.
+
+### Phase 3 Status: COMPLETE
+- Fixed horizontal boundary wrapping bug in `engine/glyph-art.js` (`Canvas.finish()`).
+- Eliminated per-frame iterator/closure allocations and added `webglcontextrestored` handling in `engine/glyph-engine.js`.
+- Authored `engine/README.md` documenting the two-pass MRT cell pipeline, `GlyphEngine`, and `GlyphArt`.
+- Fixed Archer and Lich ranged cooldown decrement order in `games/delve/src/rules.js` and removed dead `state.bolts` property.
+- Fixed portcullis door raising animation bypass in `games/delve/src/scene.js` and eliminated per-frame allocations in `DelveView.draw()` and `DelveApp.frame()`.
+- Expanded `games/delve/test/rules.test.cjs` from 8 to 12 test suites covering ranged cooldowns, slow/fast/door monster traits, boss victory, item/action edge cases, corrupt save rejection, and `GlyphArt` boundary shading.
+- End-of-Phase Ritual executed (`npm run build`, `npm test`, `npm run test:browser`) with 0 errors.

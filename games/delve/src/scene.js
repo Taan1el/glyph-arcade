@@ -144,30 +144,58 @@
     constructor(canvas){
       this.engine=new GlyphEngine(canvas,{sceneSource:SCENE,far:40,uniforms:['map','size','eye','forward','right','up','lantern','torches','torchCount','spritePos','spriteInfo','spriteColour','spriteCount','wallColour','floorColour','fogColour']});
       this.mapData=null;this.spritePos=new Float32Array(MAX_SPRITES*4);this.spriteInfo=new Float32Array(MAX_SPRITES*4);this.spriteColour=new Float32Array(MAX_SPRITES*3);this.torchData=new Float32Array(MAX_TORCHES*4);
+      this.eye=new Float32Array(3);this.forward=new Float32Array(3);this.right=new Float32Array(3);this.up=new Float32Array(3);
+      this._nearTorches=[];this._visibleSprites=[];this._activePalette=PALETTES[0];this._lantern=0.95;this._torchCount=0;this._spriteCount=0;
+      this._uniformBinder=this._bindUniforms.bind(this);
     }
     resize(width,height,cellSize){this.engine.resize(width,height,cellSize);}
     // tiles: Delve tile ids; doors: Map(index -> open 0..1)
     setMap(size,tiles,doors){
       if(!this.mapData||this.mapData.length!==size*size*4)this.mapData=new Uint8Array(size*size*4);
-      for(let i=0;i<size*size;i++){const tile=tiles[i],open=tile===3?1:doors?.get(i)??0;this.mapData[i*4]=tile===3?(open>=1?1:2):tile;this.mapData[i*4+1]=Math.round(Math.min(1,open)*255);}
+      for(let i=0;i<size*size;i++){
+        const tile=tiles[i],open=doors?.has(i)?doors.get(i):(tile===3?1:0);
+        this.mapData[i*4]=tile===3?(open>=1?1:2):tile;
+        this.mapData[i*4+1]=Math.round(Math.min(1,Math.max(0,open))*255);
+      }
       this.size=size;this.engine.setTexture('map',4,size,size,this.mapData);
     }
+    _bindUniforms(gl,u){
+      const eye=this.eye,forward=this.forward,palette=this._activePalette;
+      gl.uniform1i(u.map,4);gl.uniform1i(u.size,this.size);gl.uniform3fv(u.eye,eye);gl.uniform3fv(u.forward,forward);gl.uniform3fv(u.right,this.right);gl.uniform3fv(u.up,this.up);
+      gl.uniform4f(u.lantern,eye[0]+forward[0]*.2,eye[1]+.15,eye[2]+forward[2]*.2,this._lantern);
+      gl.uniform4fv(u.torches,this.torchData);gl.uniform1i(u.torchCount,this._torchCount);
+      gl.uniform4fv(u.spritePos,this.spritePos);gl.uniform4fv(u.spriteInfo,this.spriteInfo);gl.uniform3fv(u.spriteColour,this.spriteColour);gl.uniform1i(u.spriteCount,this._spriteCount);
+      gl.uniform3fv(u.wallColour,palette.wall);gl.uniform3fv(u.floorColour,palette.floor);gl.uniform3fv(u.fogColour,palette.fog);
+    }
     draw(view){
-      const {camera,sprites,torches,depth,time,ink,tint,dissolve}=view,palette=PALETTES[Math.max(0,Math.min(PALETTES.length-1,depth-1))];
-      const yaw=camera.yaw,pitch=camera.pitch||0,forward=[Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)];
-      const right=[Math.cos(yaw),0,Math.sin(yaw)],up=[-Math.sin(yaw)*Math.sin(pitch),Math.cos(pitch),Math.cos(yaw)*Math.sin(pitch)];
-      const eye=[camera.x,camera.y,camera.z];
-      const nearTorches=torches.slice().sort((a,b)=>Math.hypot(a.x-eye[0],a.z-eye[2])-Math.hypot(b.x-eye[0],b.z-eye[2])).slice(0,MAX_TORCHES);
-      this.torchData.fill(0);nearTorches.forEach((t,i)=>this.torchData.set([t.x,t.y,t.z,t.phase],i*4));
-      const visible=sprites.filter(s=>Math.hypot(s.x-eye[0],s.z-eye[2])<36).sort((a,b)=>Math.hypot(a.x-eye[0],a.z-eye[2])-Math.hypot(b.x-eye[0],b.z-eye[2])).slice(0,MAX_SPRITES);
-      visible.forEach((s,i)=>{this.spritePos.set([s.x,s.y,s.z,s.size],i*4);this.spriteInfo.set([s.glyph.charCodeAt(0),s.material,s.flash||0,s.dissolve||0],i*4);this.spriteColour.set(s.colour,i*3);});
-      this.engine.render((gl,u)=>{
-        gl.uniform1i(u.map,4);gl.uniform1i(u.size,this.size);gl.uniform3fv(u.eye,eye);gl.uniform3fv(u.forward,forward);gl.uniform3fv(u.right,right);gl.uniform3fv(u.up,up);
-        gl.uniform4f(u.lantern,eye[0]+forward[0]*.2,eye[1]+.15,eye[2]+forward[2]*.2,view.lantern??.95);
-        gl.uniform4fv(u.torches,this.torchData);gl.uniform1i(u.torchCount,nearTorches.length);
-        gl.uniform4fv(u.spritePos,this.spritePos);gl.uniform4fv(u.spriteInfo,this.spriteInfo);gl.uniform3fv(u.spriteColour,this.spriteColour);gl.uniform1i(u.spriteCount,visible.length);
-        gl.uniform3fv(u.wallColour,palette.wall);gl.uniform3fv(u.floorColour,palette.floor);gl.uniform3fv(u.fogColour,palette.fog);
-      },{time,ink,tint,dissolve});
+      const {camera,sprites,torches,depth,time,ink,tint,dissolve}=view;
+      this._activePalette=PALETTES[Math.max(0,Math.min(PALETTES.length-1,depth-1))];
+      const yaw=camera.yaw,pitch=camera.pitch||0,cosP=Math.cos(pitch),sinP=Math.sin(pitch),sinY=Math.sin(yaw),cosY=Math.cos(yaw);
+      this.forward[0]=sinY*cosP;this.forward[1]=sinP;this.forward[2]=-cosY*cosP;
+      this.right[0]=cosY;this.right[1]=0;this.right[2]=sinY;
+      this.up[0]=-sinY*sinP;this.up[1]=cosP;this.up[2]=cosY*sinP;
+      const ex=camera.x,ey=camera.y,ez=camera.z;
+      this.eye[0]=ex;this.eye[1]=ey;this.eye[2]=ez;
+      this._lantern=view.lantern??.95;
+
+      const nearTorches=this._nearTorches;nearTorches.length=0;
+      for(let i=0;i<torches.length;i++){const t=torches[i];t._dist=Math.hypot(t.x-ex,t.z-ez);nearTorches.push(t);}
+      nearTorches.sort((a,b)=>a._dist-b._dist);
+      const tCount=Math.min(MAX_TORCHES,nearTorches.length);this._torchCount=tCount;
+      this.torchData.fill(0);
+      for(let i=0;i<tCount;i++){const t=nearTorches[i],i4=i*4;this.torchData[i4]=t.x;this.torchData[i4+1]=t.y;this.torchData[i4+2]=t.z;this.torchData[i4+3]=t.phase;}
+
+      const visible=this._visibleSprites;visible.length=0;
+      for(let i=0;i<sprites.length;i++){const s=sprites[i],d=Math.hypot(s.x-ex,s.z-ez);if(d<36){s._dist=d;visible.push(s);}}
+      visible.sort((a,b)=>a._dist-b._dist);
+      const sCount=Math.min(MAX_SPRITES,visible.length);this._spriteCount=sCount;
+      for(let i=0;i<sCount;i++){
+        const s=visible[i],i4=i*4,i3=i*3,c=s.colour;
+        this.spritePos[i4]=s.x;this.spritePos[i4+1]=s.y;this.spritePos[i4+2]=s.z;this.spritePos[i4+3]=s.size;
+        this.spriteInfo[i4]=s.glyph.charCodeAt(0);this.spriteInfo[i4+1]=s.material;this.spriteInfo[i4+2]=s.flash||0;this.spriteInfo[i4+3]=s.dissolve||0;
+        this.spriteColour[i3]=c[0];this.spriteColour[i3+1]=c[1];this.spriteColour[i3+2]=c[2];
+      }
+      this.engine.render(this._uniformBinder,{time,ink,tint,dissolve});
     }
     inspect(){return this.engine.inspect();}
     destroy(){this.engine.destroy();}

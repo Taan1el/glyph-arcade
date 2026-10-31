@@ -74,7 +74,7 @@
     const distance=distances(state,start.cx,start.cy,true);
     const far=rooms.slice().sort((a,b)=>distance[index(b.cx,b.cy)]-distance[index(a.cx,a.cy)])[0];
     if(state.depth<FINAL_DEPTH)tiles[index(far.cx,far.cy)]=STAIRS;
-    state.explored=new Array(SIZE*SIZE).fill(0);state.monsters=[];state.items=[];state.torches=[];state.bolts=0;
+    state.explored=new Array(SIZE*SIZE).fill(0);state.monsters=[];state.items=[];state.torches=[];
     // Torches on room walls light the rooms; the corridors stay dark.
     for(const r of rooms){
       const spots=[];
@@ -194,11 +194,11 @@
     if(adjacent){const {damage}=strike(state,monster.atk,defenceOf(p));events.push({type:'attack',actor:monster.id,target:'player',damage});say(state,events,`The ${info.name} hits you for ${damage}.`);hurtPlayer(state,damage,info.name,events);return;}
     const distance=Math.hypot(dx,dy),sees=distance<=9&&lineOfSight(state,monster.x,monster.y,p.x,p.y);
     if(sees)monster.seen=[p.x,p.y];
-    if(monster.cooldown>0)monster.cooldown--;
     if(info.range&&sees&&(dx===0||dy===0)&&distance<=info.range&&monster.cooldown===0){
       const {damage}=strike(state,monster.atk-1,defenceOf(p));monster.cooldown=info.boss?2:1;
       events.push({type:'shoot',actor:monster.id,from:[monster.x,monster.y],to:[p.x,p.y],damage});say(state,events,`The ${info.name} ${info.boss?'hurls a bolt of frost':'looses an arrow'} for ${damage}.`);hurtPlayer(state,damage,info.name,events);return;
     }
+    if(monster.cooldown>0)monster.cooldown--;
     if(info.boss&&state.turn%7===0&&state.monsters.length<16){
       for(const [ox,oy] of DIRS){const x=monster.x+ox,y=monster.y+oy;if(passable(tileAt(state,x,y))&&!monsterAt(state,x,y)&&!(x===p.x&&y===p.y)){const raised=spawn(state,'skeleton',x,y);events.push({type:'summon',id:raised.id});say(state,events,'The lich raises a skeleton from the floor.');break;}}
     }

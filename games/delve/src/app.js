@@ -55,7 +55,10 @@
       this.canvas=document.getElementById('view');this.view=new DelveView(this.canvas);this.sound=new Sound();
       this.el=Object.fromEntries(['title','help','end','hud','log','minimap','touch','end-title','end-detail','end-score','continue','depth','hp','hp-bar','level','attack','defence','gold','potions','scrolls','toast','mute'].map(id=>[id,document.getElementById(id)]));
       this.state=null;this.mode='title';this.queue=[];this.anim=[];this.visuals=new Map();this.particles=[];this.doors=new Map();
-      this.camera={x:0,y:EYE,z:0,yaw:0,pitch:-.04};this.tint=[0,0,0,0];this.dissolve=0;this.shake=0;this.time=0;this.last=performance.now();
+      this.camera={x:0,y:EYE,z:0,yaw:0,pitch:-.04};this._renderCamera={x:0,y:EYE,z:0,yaw:0,pitch:-.04};
+      this.tint=[0,0,0,0];this.dissolve=0;this.shake=0;this.time=0;this.last=performance.now();
+      this.reducedMotion=Boolean(global.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+      this._sprites=[];this._torchSprites=[];
       this.demo=D.newRun('title-'+today());this.syncVisuals(this.demo,true);this.placeCamera(this.demo);
       this.bind();this.resize();this.refreshTitle();
       if(global.matchMedia?.('(pointer: coarse)').matches)this.enableTouch();
@@ -66,7 +69,7 @@
       const keys={KeyW:'forward',ArrowUp:'forward',KeyS:'back',ArrowDown:'back',KeyA:'left',KeyD:'right',KeyQ:'turnLeft',ArrowLeft:'turnLeft',KeyE:'turnRight',ArrowRight:'turnRight',Space:'wait',Digit1:'potion',Digit2:'scroll',Enter:'descend',Period:'descend'};
       global.addEventListener('keydown',event=>{
         if(event.code==='Escape'){event.preventDefault();if(this.mode==='play')this.show('help');else if(this.mode==='help'&&this.state&&!this.state.dead&&!this.state.won)this.show('play');return;}
-        if(this.mode!=='play'){if(this.mode==='title'&&event.code==='Enter'){event.preventDefault();this.newRun();}return;}
+        if(this.mode!=='play'){if((this.mode==='title'||this.mode==='end')&&(event.code==='Enter'||event.code==='Space')){event.preventDefault();this.newRun();}return;}
         if(event.code==='KeyM'){this.el.minimap.classList.toggle('large');return;}
         const action=keys[event.code];if(!action)return;event.preventDefault();this.request(action);
       });
@@ -126,7 +129,7 @@
           case'turn':{const target=from.yaw+(action==='turnLeft'?-1:1)*Math.PI/2;this.tween(this.camera,'yaw',from.yaw,target,TURN_MS,true);break;}
           case'step':this.tween(this.camera,'x',from.x,e.to[0]+.5,MOVE_MS,true);this.tween(this.camera,'z',from.z,e.to[1]+.5,MOVE_MS,true);this.bob(MOVE_MS);this.sound.play('step');break;
           case'bump':{const [dx,dy]=D.DIRS[(before.facing+({forward:0,right:1,back:2,left:3}[action]||0))%4];this.nudge(dx,dy,.12,120);this.sound.play('bump');break;}
-          case'door':{const i=D.index(e.x,e.y);this.doors.set(i,0);this.anim.push({start:now,duration:380,update:t=>this.doors.set(i,ease(t)),done:()=>this.doors.delete(i)});this.sound.play('door');break;}
+          case'door':{const i=D.index(e.x,e.y);this.doors.set(i,0);this.anim.push({start:now,duration:380,update:t=>this.doors.set(i,ease(t)),done:()=>{this.doors.delete(i);if(this.state)this.view.setMap(D.SIZE,this.state.tiles,this.doors);}});this.sound.play('door');break;}
           case'attack':
             if(e.actor==='player'){const [dx,dy]=D.DIRS[before.facing];this.nudge(dx,dy,.28,170);const v=this.visuals.get(e.target);if(v){v.flash=1;this.number(v.x,v.y+v.size*.6,v.z,e.damage,e.crit?[1,.85,.3]:[1,1,1]);}this.sound.play(e.crit?'crit':'hit');}
             else{const v=this.visuals.get(e.actor);if(v)this.lunge(v,this.camera.x,this.camera.z);this.sound.play('swing');}
@@ -157,7 +160,7 @@
     nudge(dx,dy,amount,duration){const x=this.camera.x,z=this.camera.z;this.anim.push({start:this.time,duration,blocking:true,update:t=>{const k=Math.sin(t*Math.PI)*amount;this.camera.x=x+dx*k;this.camera.z=z+dy*k;},done:()=>{this.camera.x=x;this.camera.z=z;}});}
     bob(duration){this.anim.push({start:this.time,duration,update:t=>{this.camera.y=EYE+Math.sin(t*Math.PI)*.045;}});}
     lunge(v,tx,tz){const x=v.x,z=v.z,dx=tx-x,dz=tz-z,len=Math.hypot(dx,dz)||1;this.anim.push({start:this.time,duration:220,update:t=>{const k=Math.sin(t*Math.PI)*.32;v.x=x+dx/len*k;v.z=z+dz/len*k;},done:()=>{v.x=x;v.z=z;}});}
-    flash(colour,strength,duration){this.anim.push({start:this.time,duration,update:t=>{this.tint=[...colour,strength*(1-t)];},done:()=>{this.tint=[0,0,0,0];}});}
+    flash(colour,strength,duration){this.anim.push({start:this.time,duration,update:t=>{this.tint[0]=colour[0];this.tint[1]=colour[1];this.tint[2]=colour[2];this.tint[3]=strength*(1-t);},done:()=>{this.tint[0]=0;this.tint[1]=0;this.tint[2]=0;this.tint[3]=0;}});}
     number(x,y,z,value,colour){
       String(value).split('').forEach((digit,i,all)=>{const p={x:x+(i-(all.length-1)/2)*.16,y,z,glyph:digit,colour,size:.22,material:21,born:this.time};this.particles.push(p);});
     }
@@ -175,6 +178,7 @@
         const map=this.state===state||state===this.demo?state:this.state;
         this.view.setMap(D.SIZE,map.tiles,this.doors);
         this.torches=state.torches.map((t,i)=>{const [dx,dy]=D.DIRS[(t.dir+2)%4];return{x:t.x+.5+dx*.62,y:1.55,z:t.y+.5+dy*.62,phase:i*1.37};});
+        this._torchSprites=this.torches.map(t=>({x:t.x,y:t.y,z:t.z,size:.32,glyph:'*',colour:[1,.7,.3],material:20,flash:0,dissolve:0,phase:t.phase,baseY:t.y}));
       }
     }
 
@@ -213,20 +217,37 @@
     // --- Frame loop
     frame(now){
       const dt=Math.min(.05,(now-this.last)/1000);this.last=now;this.time+=dt*1000;
-      for(const a of this.anim.slice()){const t=Math.min(1,Math.max(0,(this.time-a.start)/a.duration));if(this.time>=a.start)a.update(t);if(t>=1){this.anim.splice(this.anim.indexOf(a),1);a.done?.();}}
+      for(let i=this.anim.length-1;i>=0;i--){const a=this.anim[i],t=Math.min(1,Math.max(0,(this.time-a.start)/a.duration));if(this.time>=a.start)a.update(t);if(t>=1){this.anim.splice(i,1);a.done?.();}}
       if(this.mode==='play'&&!this.busy()&&this.queue.length&&!this.state.dead&&!this.state.won)this.run(this.queue.shift());
       if(this.doors.size&&this.state)this.view.setMap(D.SIZE,this.state.tiles,this.doors);
       const playing=this.state&&(this.mode==='play'||this.mode==='help'||this.mode==='end'),world=playing?this.state:this.demo;
       if(!playing){this.camera.yaw+=dt*.12;this.camera.pitch=-.04;}
-      for(const v of this.visuals.values()){v.flash=Math.max(0,(v.flash||0)-dt*5);if(!v.dying&&v.kind==='monster'&&!this.anim.some(a=>a.target===v&&a.key==='y'))v.y=v.baseY+(v.float?Math.sin(this.time/400+v.phase)*.12:Math.abs(Math.sin(this.time/260+v.phase))*.03);if(v.kind==='item'&&!v.dying)v.y=v.baseY+Math.sin(this.time/330+v.phase)*.06;}
-      this.particles=this.particles.filter(p=>{const age=this.time-p.born;if(p.material===21){p.y+=dt*.6;p.dissolve=Math.max(0,(age-500)/400);return age<900;}return p.life===undefined||p.life>0;});
+      const sprites=this._sprites;sprites.length=0;
+      for(const v of this.visuals.values()){
+        v.flash=Math.max(0,(v.flash||0)-dt*5);
+        if(!v.dying&&v.kind==='monster'&&!this.anim.some(a=>a.target===v&&a.key==='y'))v.y=v.baseY+(v.float?Math.sin(this.time/400+v.phase)*.12:Math.abs(Math.sin(this.time/260+v.phase))*.03);
+        if(v.kind==='item'&&!v.dying)v.y=v.baseY+Math.sin(this.time/330+v.phase)*.06;
+        sprites.push(v);
+      }
+      for(let i=0;i<this._torchSprites.length;i++){
+        const ts=this._torchSprites[i];
+        ts.y=ts.baseY+Math.sin(this.time/90+ts.phase)*.02;
+        ts.size=.32+Math.sin(this.time/70+ts.phase)*.03;
+        sprites.push(ts);
+      }
+      for(let i=this.particles.length-1;i>=0;i--){
+        const p=this.particles[i],age=this.time-p.born;
+        if(p.material===21){p.y+=dt*.6;p.dissolve=Math.max(0,(age-500)/400);if(age>=900){this.particles.splice(i,1);continue;}}
+        else if(p.life!==undefined&&p.life<=0){this.particles.splice(i,1);continue;}
+        sprites.push(p);
+      }
       this.shake=Math.max(0,this.shake-dt*5);
-      const sprites=[...this.visuals.values()].map(v=>({x:v.x,y:v.y,z:v.z,size:v.size,glyph:v.glyph,colour:v.colour,material:v.material,flash:v.flash,dissolve:v.dissolve}));
-      for(const t of this.torches||[])sprites.push({x:t.x,y:t.y+Math.sin(this.time/90+t.phase)*.02,z:t.z,size:.32+Math.sin(this.time/70+t.phase)*.03,glyph:'*',colour:[1,.7,.3],material:20});
-      for(const p of this.particles)sprites.push(p);
-      const camera={...this.camera,yaw:this.camera.yaw+(Math.random()-.5)*this.shake*.06};
+      const rc=this._renderCamera;
+      rc.x=this.camera.x;rc.y=this.camera.y;rc.z=this.camera.z;
+      rc.yaw=this.camera.yaw+(this.reducedMotion?0:(Math.random()-.5)*this.shake*.06);
+      rc.pitch=this.camera.pitch;
       if(!playing&&world===this.demo&&this.view.size!==D.SIZE)this.view.setMap(D.SIZE,this.demo.tiles,null);
-      try{this.view.draw({camera,sprites,torches:this.torches||[],depth:world.depth,time:this.time/1000,ink:true,tint:this.tint,dissolve:this.dissolve});}catch(error){this.fatal(error);return;}
+      try{this.view.draw({camera:rc,sprites,torches:this.torches||[],depth:world.depth,time:this.time/1000,ink:true,tint:this.tint,dissolve:this.dissolve});}catch(error){this.fatal(error);return;}
       requestAnimationFrame(this.frame);
     }
     fatal(error){console.error(error);const box=document.getElementById('fatal');box.hidden=false;box.querySelector('p').textContent=error.message;}
