@@ -10,13 +10,16 @@
 <style>
 :root{--ink:#e8dcc0;--muted:#9c8f72;--gold:#ff9a1e;--panel:#141110e6;--line:#644a38;font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#050506}
 body{margin:0;overflow:hidden;background:#050506}
+:root{--safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px);--tb:max(44px,min(58px,calc((100vw - 64px)/6)))}
+html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.touch{touch-action:none}
 [hidden]{display:none!important}
-#view{display:block;width:100vw;height:100vh;touch-action:none}
+#view{display:block;width:100vw;height:100vh;height:100dvh;touch-action:none}
 button{font:inherit;cursor:pointer;background:#2a201b;color:var(--ink);border:1px solid #855e44;padding:10px 16px;border-radius:2px}
 button:hover,button:focus-visible{background:#3d2d24;outline:2px solid var(--gold);outline-offset:1px}
 button.primary{background:var(--gold);color:#1b1108;border-color:#ffc470;font-weight:bold}
 button.small{padding:4px 9px;font-size:12px}
-.card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(540px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #2c201a;padding:30px 32px;box-shadow:0 18px 60px #000c}
+.card{touch-action:pan-y;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(540px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #2c201a;padding:30px 32px;box-shadow:0 18px 60px #000c}
 .card h1{font:bold 50px "Courier New",monospace;letter-spacing:.26em;margin:0 0 6px;color:var(--gold);text-shadow:0 0 18px #ff9a1e55}
 .card h2{font-weight:normal;font-size:26px;margin:0 0 12px;color:var(--gold)}
 .card p{line-height:1.5;color:#cfc3a5}
@@ -28,7 +31,7 @@ dl.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;
 dl.keys dt{font:13px "Courier New",monospace;color:var(--gold);white-space:nowrap}
 dl.keys dd{margin:0;color:#cfc3a5}
 #hud{position:absolute;inset:0;pointer-events:none;font:12px "Courier New",monospace}
-.stats{position:absolute;left:14px;top:14px;background:var(--panel);border:1px solid var(--line);padding:10px 12px;min-width:240px;display:grid;gap:5px;pointer-events:auto}
+.stats{position:absolute;left:calc(14px + var(--safe-l));top:calc(14px + var(--safe-t));background:var(--panel);border:1px solid var(--line);padding:10px 12px;min-width:240px;display:grid;gap:5px;pointer-events:auto}
 .hpline{display:flex;align-items:center;gap:8px}
 .bar{flex:1;height:9px;background:#3a1512;border:1px solid #6b2a22}
 .bar.arm{background:#12283a;border-color:#22526b}
@@ -39,20 +42,28 @@ dl.keys dd{margin:0;color:#cfc3a5}
 #weapon{color:var(--gold);font-weight:bold}
 .stats .row{margin:2px 0 0;gap:10px;color:#cfc3a5}
 #crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:bold 16px "Courier New",monospace;color:#ff9a1eaa;pointer-events:none}
-#minimap{position:absolute;right:14px;top:14px;margin:0;background:#0b0a08d9;border:1px solid var(--line);padding:6px;font:7px/7px "Courier New",monospace;color:#d6b898;letter-spacing:0;white-space:pre}
+#minimap{position:absolute;right:calc(14px + var(--safe-r));top:calc(14px + var(--safe-t));margin:0;background:#0b0a08d9;border:1px solid var(--line);padding:6px;font:7px/7px "Courier New",monospace;color:#d6b898;letter-spacing:0;white-space:pre}
 #minimap.large{font:10px/10px "Courier New",monospace}
-#log{position:absolute;left:14px;bottom:14px;max-width:min(560px,60vw);display:grid;gap:3px}
+#log{position:absolute;left:calc(14px + var(--safe-l));bottom:calc(14px + var(--safe-b));max-width:min(560px,60vw);display:grid;gap:3px}
 #log div{background:#0b0a08cc;padding:4px 8px;color:#e2d6b6;border-left:2px solid var(--gold)}
 #log div:not(:last-child){opacity:.62}
-#toast{position:absolute;left:50%;top:18px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:8px 14px;font:13px "Courier New",monospace;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
+#toast{position:absolute;left:50%;top:calc(18px + var(--safe-t));transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:8px 14px;font:13px "Courier New",monospace;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
 #toast.visible{opacity:1}
 body[data-mode=title] #toast{top:auto;bottom:18px}
 #touch{position:absolute;left:0;right:0;bottom:0;height:0}
-#touch .pad{position:absolute;left:14px;bottom:16px;display:grid;grid-template-columns:repeat(3,58px);gap:7px}
-#touch .side{position:absolute;right:14px;bottom:16px;display:grid;grid-template-columns:repeat(2,64px);gap:7px}
-#touch button{height:52px;padding:0;font:16px "Courier New",monospace;background:#1d1612d9;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#touch .pad{position:absolute;left:calc(12px + var(--safe-l));bottom:calc(16px + var(--safe-b));display:grid;grid-template-columns:repeat(3,var(--tb));gap:6px}
+#touch .side{position:absolute;right:calc(12px + var(--safe-r));bottom:calc(16px + var(--safe-b));display:grid;grid-template-columns:repeat(3,var(--tb));gap:6px}
+#touch button{height:52px;padding:0;font:16px "Courier New",monospace;background:#1d1612d9;touch-action:none;user-select:none;-webkit-user-select:none}
 #touch button small{display:block;font-size:9px;color:var(--muted)}
-body.touch #log{bottom:142px}
+body.touch #log{bottom:calc(134px + var(--safe-b));max-width:calc(100vw - 28px);font-size:11px}
+body.touch #log div:nth-last-child(n+3){display:none}
+body.touch .stats{box-sizing:border-box;max-width:calc(100vw - 156px)}
+body.touch button.small{min-height:44px;min-width:44px}
+body.touch[data-mode=play] #toast{top:auto;bottom:calc(190px + var(--safe-b))}
+#touch .blank{visibility:hidden}
+select{font:inherit;background:#2a201b;color:var(--ink);border:1px solid var(--line);padding:8px 10px;min-height:44px;margin-left:6px}
+select:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+@media(max-height:480px){body.touch #log{left:50%;bottom:calc(10px + var(--safe-b));transform:translateX(-50%);width:calc(100vw - 6*var(--tb) - 64px);max-width:none}#touch button{height:46px}body.touch[data-mode=play] #toast{bottom:calc(120px + var(--safe-b))}}
 body:not([data-mode=play]) #touch{display:none}
 #fatal{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#050506;color:var(--ink);padding:24px}
 @media(max-width:700px){.card{padding:22px}.card h1{font-size:36px}.stats{min-width:0;padding:7px 9px;font-size:11px}#minimap{font:5px/5px "Courier New",monospace}}
@@ -80,20 +91,20 @@ body:not([data-mode=play]) #touch{display:none}
 <div id="toast" role="status"></div>
 <nav id="touch" hidden aria-label="Touch controls">
   <div class="pad">
-    <button data-hold="turnLeft" aria-label="Turn left">&#8634;</button>
+    <button data-action="pause" aria-label="Pause">&#9776;</button>
     <button data-hold="forward" aria-label="Move forward">&#9650;</button>
-    <button data-hold="turnRight" aria-label="Turn right">&#8635;</button>
+    <button class="blank" tabindex="-1" aria-hidden="true"></button>
     <button data-hold="left" aria-label="Strafe left">&#9664;</button>
     <button data-hold="back" aria-label="Move back">&#9660;</button>
     <button data-hold="right" aria-label="Strafe right">&#9654;</button>
   </div>
   <div class="side">
-    <button data-hold="shoot">FIRE<small>shoot</small></button>
+    <button data-hold="turnLeft" aria-label="Turn left">&#8634;</button>
+    <button data-hold="shoot">FIRE</button>
+    <button data-hold="turnRight" aria-label="Turn right">&#8635;</button>
+    <button data-action="prevWeapon" aria-label="Previous weapon">&#8249;<small>gun</small></button>
     <button data-action="use">USE<small>door</small></button>
-    <button data-action="weapon1">1<small>pistol</small></button>
-    <button data-action="weapon2">2<small>shotgun</small></button>
-    <button data-action="weapon3">3<small>chaingun</small></button>
-    <button data-action="pause">&#9776;<small>pause</small></button>
+    <button data-action="nextWeapon" aria-label="Next weapon">&#8250;<small>gun</small></button>
   </div>
 </nav>
 <section id="title" class="card" aria-labelledby="title-heading">
@@ -106,6 +117,7 @@ body:not([data-mode=play]) #touch{display:none}
     <button id="continue" type="button" hidden>Continue</button>
     <button id="how-to" type="button">How to play</button>
   </div>
+  <label class="note">Difficulty<select id="difficulty"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
   <p id="best" class="note"></p>
   <p class="note">Real-time combat. Every sprite is drawn in code and shaded as letters. <a href="index.html">More games in the arcade</a></p>
 </section>
@@ -130,6 +142,7 @@ body:not([data-mode=play]) #touch{display:none}
     <dt>Space / F / Click</dt><dd>Fire current weapon.</dd>
     <dt>1 / 2 / 3 / 4</dt><dd>Switch weapons: Pistol, Shotgun, Chaingun, Rocket Launcher.</dd>
     <dt>P / Esc</dt><dd>Pause game. M resizes the radar map.</dd>
+    <dt>Gamepad</dt><dd>Left stick moves, right stick turns, RT or A fires, X uses, LB / RB change weapon, Start pauses. Controls are fixed for now and cannot be remapped.</dd>
   </dl>
   <div class="row"><button id="help-back" class="primary" type="button">Back</button></div>
 </section>

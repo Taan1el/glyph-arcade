@@ -1,15 +1,7 @@
 'use strict';
-const CACHE_NAME = 'glyph-arcade-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './delve.html',
-  './inkfire.html',
-  './manifest.webmanifest',
-  './icon.svg',
-  './previews/delve.png',
-  './previews/inkfire.png'
-];
+// tools/build.cjs fills in the build id and asset list, so every build gets a fresh cache.
+const CACHE_NAME = 'glyph-arcade-__BUILD__';
+const ASSETS = /*__ASSETS__*/[];
 
 self.addEventListener('install', event => {
   event.waitUntil(

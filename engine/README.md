@@ -34,11 +34,28 @@ Creates a WebGL2 context and links the scene and display shaders.
   - `flags` bit `2u`: Flat foreground colour (disable vertical cell gradient).
 
 ### Instance Methods
-- `engine.resize(width, height, cellSize = [8, 12])`: Resizes the physical canvas (clamped to `devicePixelRatio` 1..2) and reallocates the character-cell framebuffer.
+- `engine.resize(width, height, cellSize = [8, 12])`: Resizes the physical canvas (`devicePixelRatio` clamped to 1..`engine.maxDpr`, default 2) and reallocates the character-cell framebuffer.
 - `engine.setTexture(name, unitIndex, width, height, data)`: Uploads a `Uint8Array` as an `RGBA8UI` integer texture (`usampler2D`) and binds it to `TEXTURE0 + unitIndex` on uniform `u_<name>`. Use `unitIndex >= 4` (units `0..3` are reserved by the engine).
 - `engine.render(setUniforms, { time = 0, ink = true, tint = [0,0,0,0], dissolve = 0 })`: Executes Pass 1 (`setUniforms(gl, locations)`) followed by Pass 2.
 - `engine.inspect()`: Reads back `{ columns, rows, glyphs, materials }` from the cell framebuffer for automated testing.
 - `engine.destroy()`: Releases all WebGL programs, textures, framebuffers, and event listeners.
+
+## `GlyphPad` (`engine/glyph-input.js`)
+
+Reads the first connected gamepad using the standard mapping.
+
+- `pad.poll()`: Call once per frame.
+- `pad.axis(i)`: Stick value with the deadzone applied (0/1 left stick, 2/3 right stick).
+- `pad.held(i)` / `pad.pressed(i)`: Button state, and whether it went down this frame.
+
+## `GlyphQuality` (`engine/glyph-quality.js`)
+
+Steps quality down when frames run long and never steps back up. See [`PERF.md`](../PERF.md).
+
+- `new GlyphQuality(onChange)`: `onChange` should re-run the game's resize.
+- `quality.sample(frameMs)`: Call once per frame.
+- `quality.setting.maxDpr`: Assign to `engine.maxDpr` before `engine.resize(...)`.
+- `quality.cell([w, h])`: Scales a base cell size for the current level.
 
 ## `GlyphArt` API (`engine/glyph-art.js`)
 

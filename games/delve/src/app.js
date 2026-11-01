@@ -10,6 +10,7 @@
     lich:{size:2.1,y:1.05,colour:[.78,.6,1.0],float:true}
   };
   const ITEM_COLOURS={gold:[1,.82,.3],potion:[1,.32,.3],scroll:[.92,.86,.66],weapon:[.82,.86,.92],armour:[.6,.72,.95]};
+  const HOLD=new Set(['forward','back','left','right','wait']);
   const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
   const lerp=(a,b,t)=>a+(b-a)*t;
   const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
@@ -55,7 +56,7 @@
       this.canvas=document.getElementById('view');this.view=new DelveView(this.canvas);this.sound=new Sound();
       this.el=Object.fromEntries(['title','help','end','hud','log','minimap','touch','end-title','end-detail','end-score','continue','depth','hp','hp-bar','level','attack','defence','gold','potions','scrolls','toast','mute'].map(id=>[id,document.getElementById(id)]));
       this.state=null;this.mode='title';this.queue=[];this.anim=[];this.visuals=new Map();this.particles=[];this.doors=new Map();
-      this.camera={x:0,y:EYE,z:0,yaw:0,pitch:-.04};this._renderCamera={x:0,y:EYE,z:0,yaw:0,pitch:-.04};
+      this.pad=new global.GlyphPad();this.quality=new global.GlyphQuality(()=>this.resize());this.padNext=0;this.touchAction=null;this.touchNext=0;this.camera={x:0,y:EYE,z:0,yaw:0,pitch:-.04};this._renderCamera={x:0,y:EYE,z:0,yaw:0,pitch:-.04};
       this.tint=[0,0,0,0];this.dissolve=0;this.shake=0;this.time=0;this.last=performance.now();
       this.reducedMotion=Boolean(global.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
       this._sprites=[];this._torchSprites=[];
@@ -73,23 +74,29 @@
         if(event.code==='KeyM'){this.el.minimap.classList.toggle('large');return;}
         const action=keys[event.code];if(!action)return;event.preventDefault();this.request(action);
       });
+      const difficulty=document.getElementById('difficulty');
+      try{const stored=localStorage.getItem('delve-difficulty');if(D.DIFFICULTIES[stored])difficulty.value=stored;}catch{}
+      difficulty.addEventListener('change',()=>{try{localStorage.setItem('delve-difficulty',difficulty.value);}catch{}});
       document.getElementById('new-run').addEventListener('click',()=>this.newRun());
       document.getElementById('daily-run').addEventListener('click',()=>this.newRun('daily-'+today()));
       this.el.continue.addEventListener('click',()=>this.resume());
       document.getElementById('how-to').addEventListener('click',()=>this.show('help'));
       document.getElementById('help-back').addEventListener('click',()=>this.show(this.state&&!this.state.dead&&!this.state.won?'play':'title'));
       document.getElementById('end-again').addEventListener('click',()=>this.newRun());
-      document.getElementById('end-same').addEventListener('click',()=>this.newRun(this.state.seed));
+      document.getElementById('end-same').addEventListener('click',()=>this.newRun(this.state.seed,this.state.difficulty));
       document.getElementById('end-menu').addEventListener('click',()=>this.show('title'));
-      this.el.mute.addEventListener('click',()=>{this.sound.muted=!this.sound.muted;this.el.mute.textContent=this.sound.muted?'Sound off':'Sound on';try{localStorage.setItem('delve-muted',this.sound.muted?'1':'0');}catch{}});
-      try{this.sound.muted=localStorage.getItem('delve-muted')==='1';}catch{}this.el.mute.textContent=this.sound.muted?'Sound off':'Sound on';
-      this.el.touch.addEventListener('pointerdown',event=>{const button=event.target.closest('button[data-action]');if(!button)return;event.preventDefault();if(button.dataset.action==='menu')this.show('help');else this.request(button.dataset.action);});
+      const showMute=()=>{this.el.mute.textContent=this.sound.muted?'Sound off':'Sound on';this.el.mute.setAttribute('aria-pressed',this.sound.muted?'true':'false');};
+      this.el.mute.addEventListener('click',()=>{this.sound.muted=!this.sound.muted;showMute();try{localStorage.setItem('delve-muted',this.sound.muted?'1':'0');}catch{}});
+      try{this.sound.muted=localStorage.getItem('delve-muted')==='1';}catch{}showMute();
+      this.el.touch.addEventListener('pointerdown',event=>{const button=event.target.closest('button[data-action]');if(!button)return;event.preventDefault();const action=button.dataset.action;if(action==='menu'){this.show('help');return;}this.request(action);if(HOLD.has(action)){this.touchAction={id:event.pointerId,action};this.touchNext=this.time+280;}});
+      const release=event=>{if(this.touchAction?.id===event.pointerId)this.touchAction=null;};
+      global.addEventListener('pointerup',release);global.addEventListener('pointercancel',release);
       global.addEventListener('touchstart',()=>this.enableTouch(),{passive:true,once:true});
     }
     enableTouch(){document.body.classList.add('touch');this.el.touch.hidden=false;}
-    resize(){const coarse=global.innerWidth<700;this.view.resize(global.innerWidth,global.innerHeight,coarse?[7,10]:[8,12]);}
+    resize(){const coarse=global.innerWidth<700;this.view.engine.maxDpr=this.quality.setting.maxDpr;this.view.resize(global.innerWidth,global.innerHeight,this.quality.cell(coarse?[7,10]:[8,12]));}
     show(mode){
-      this.mode=mode;for(const name of ['title','help','end'])this.el[name].hidden=mode!==name;
+      this.mode=mode;this.touchAction=null;for(const name of ['title','help','end'])this.el[name].hidden=mode!==name;
       this.el.hud.hidden=mode!=='play'&&mode!=='help';document.body.dataset.mode=mode;
       if(mode==='title'){this.refreshTitle();this.anim=[];this.dissolve=0;this.tint=[0,0,0,0];this.visuals.clear();this.particles=[];this.doors.clear();this.syncVisuals(this.demo,true);this.placeCamera(this.demo);}
       (this.el[mode]?.querySelector('button'))?.focus();
@@ -101,9 +108,11 @@
       document.getElementById('best').textContent=best.length?'Best runs · '+best.slice(0,3).map(b=>`${b.score} (${b.won?'won':'floor '+b.depth})`).join(' · '):'No runs yet. The lich waits on floor 5.';
       document.getElementById('daily-run').textContent='Daily delve · '+today();
     }
-    newRun(seed){
-      seed=seed||Math.random().toString(36).slice(2,8);
-      this.start(D.newRun(seed));this.toast(`Seed ${seed}. W/S move · A/D sidestep · Q/E turn · walk into monsters to attack.`);
+    newRun(seed,difficulty){
+      seed=seed||Math.random().toString(36).slice(2,8);difficulty=difficulty||document.getElementById('difficulty').value;
+      this.start(D.newRun(seed,difficulty));
+      const controls=document.body.classList.contains('touch')?'Left thumb steps · right thumb turns · walk into monsters to attack.':'W/S move · A/D sidestep · Q/E turn · walk into monsters to attack.';
+      this.toast(`Seed ${seed} · ${D.DIFFICULTIES[this.state.difficulty].label}. ${controls}`);
     }
     resume(){try{this.start(D.restore(JSON.parse(localStorage.getItem('delve-run'))));this.toast('Run resumed.');}catch(error){this.toast(error.message);try{localStorage.removeItem('delve-run');}catch{}this.refreshTitle();}}
     start(state){
@@ -160,7 +169,7 @@
     nudge(dx,dy,amount,duration){const x=this.camera.x,z=this.camera.z;this.anim.push({start:this.time,duration,blocking:true,update:t=>{const k=Math.sin(t*Math.PI)*amount;this.camera.x=x+dx*k;this.camera.z=z+dy*k;},done:()=>{this.camera.x=x;this.camera.z=z;}});}
     bob(duration){this.anim.push({start:this.time,duration,update:t=>{this.camera.y=EYE+Math.sin(t*Math.PI)*.045;}});}
     lunge(v,tx,tz){const x=v.x,z=v.z,dx=tx-x,dz=tz-z,len=Math.hypot(dx,dz)||1;this.anim.push({start:this.time,duration:220,update:t=>{const k=Math.sin(t*Math.PI)*.32;v.x=x+dx/len*k;v.z=z+dz/len*k;},done:()=>{v.x=x;v.z=z;}});}
-    flash(colour,strength,duration){this.anim.push({start:this.time,duration,update:t=>{this.tint[0]=colour[0];this.tint[1]=colour[1];this.tint[2]=colour[2];this.tint[3]=strength*(1-t);},done:()=>{this.tint[0]=0;this.tint[1]=0;this.tint[2]=0;this.tint[3]=0;}});}
+    flash(colour,strength,duration){if(this.reducedMotion)strength*=.35;this.anim.push({start:this.time,duration,update:t=>{this.tint[0]=colour[0];this.tint[1]=colour[1];this.tint[2]=colour[2];this.tint[3]=strength*(1-t);},done:()=>{this.tint[0]=0;this.tint[1]=0;this.tint[2]=0;this.tint[3]=0;}});}
     number(x,y,z,value,colour){
       String(value).split('').forEach((digit,i,all)=>{const p={x:x+(i-(all.length-1)/2)*.16,y,z,glyph:digit,colour,size:.22,material:21,born:this.time};this.particles.push(p);});
     }
@@ -214,14 +223,26 @@
       this.show('end');
     }
 
+    pollPad(){
+      const pad=this.pad;pad.poll();if(!pad.connected)return;
+      if(this.mode!=='play'){if(pad.pressed(0))document.activeElement?.click?.();if(pad.pressed(9)&&this.mode==='help'&&this.state&&!this.state.dead&&!this.state.won)this.show('play');return;}
+      if(pad.pressed(9)){this.show('help');return;}
+      const x=pad.axis(0),y=pad.axis(1);
+      const step=pad.held(12)||y<-.6?'forward':pad.held(13)||y>.6?'back':pad.held(14)||x<-.6?'left':pad.held(15)||x>.6?'right':null;
+      if(step&&this.time>=this.padNext){this.request(step);this.padNext=this.time+170;}
+      if(pad.pressed(4))this.request('turnLeft');if(pad.pressed(5))this.request('turnRight');
+      if(pad.pressed(0))this.request('wait');if(pad.pressed(1))this.request('descend');if(pad.pressed(2))this.request('potion');if(pad.pressed(3))this.request('scroll');
+    }
+
     // --- Frame loop
     frame(now){
-      const dt=Math.min(.05,(now-this.last)/1000);this.last=now;this.time+=dt*1000;
+      const dt=Math.min(.05,(now-this.last)/1000);this.quality.sample(now-this.last);this.last=now;this.time+=dt*1000;this.pollPad();
+      if(this.touchAction&&this.time>=this.touchNext){this.request(this.touchAction.action);this.touchNext=this.time+170;}
       for(let i=this.anim.length-1;i>=0;i--){const a=this.anim[i],t=Math.min(1,Math.max(0,(this.time-a.start)/a.duration));if(this.time>=a.start)a.update(t);if(t>=1){this.anim.splice(i,1);a.done?.();}}
       if(this.mode==='play'&&!this.busy()&&this.queue.length&&!this.state.dead&&!this.state.won)this.run(this.queue.shift());
       if(this.doors.size&&this.state)this.view.setMap(D.SIZE,this.state.tiles,this.doors);
       const playing=this.state&&(this.mode==='play'||this.mode==='help'||this.mode==='end'),world=playing?this.state:this.demo;
-      if(!playing){this.camera.yaw+=dt*.12;this.camera.pitch=-.04;}
+      if(!playing){if(!this.reducedMotion)this.camera.yaw+=dt*.12;this.camera.pitch=-.04;}
       const sprites=this._sprites;sprites.length=0;
       for(const v of this.visuals.values()){
         v.flash=Math.max(0,(v.flash||0)-dt*5);

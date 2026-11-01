@@ -148,6 +148,9 @@
       this.mode = 'title';
       this.held = new Set();
       this.touchHeld = new Set();
+      this.touchPointers = new Map();
+      this.pad = new global.GlyphPad();
+      this.quality = new global.GlyphQuality(() => this.resize());
       this.pendingWeapon = null;
       this.pendingUse = false;
       this.pendingShot = false;
@@ -238,7 +241,7 @@
         if (event.code === 'Digit2') { this.pendingWeapon = 2; return; }
         if (event.code === 'Digit3') { this.pendingWeapon = 3; return; }
         if (event.code === 'Digit4') { this.pendingWeapon = 4; return; }
-        if (event.code === 'KeyE' || event.code === 'Enter') {
+        if (event.code === 'Enter') {
           event.preventDefault();
           this.pendingUse = true;
           return;
@@ -256,7 +259,7 @@
 
       global.addEventListener('blur', () => {
         this.held.clear();
-        this.touchHeld.clear();
+        this.clearTouch();
       });
 
       // Mouse look & click to fire when playing
@@ -279,6 +282,15 @@
         }
       });
 
+      const difficulty = document.getElementById('difficulty');
+      try {
+        const stored = localStorage.getItem('inkfire-difficulty');
+        if (I.DIFFICULTIES[stored]) difficulty.value = stored;
+      } catch {}
+      difficulty.addEventListener('change', () => {
+        try { localStorage.setItem('inkfire-difficulty', difficulty.value); } catch {}
+      });
+
       document.getElementById('new-run').addEventListener('click', () => this.newRun());
       document.getElementById('daily-run').addEventListener('click', () => this.newRun('daily-' + today()));
       this.el.continue.addEventListener('click', () => this.resume());
@@ -294,7 +306,7 @@
       });
       document.getElementById('resume-btn').addEventListener('click', () => this.show('play'));
       document.getElementById('pause-help').addEventListener('click', () => this.show('help'));
-      document.getElementById('pause-restart').addEventListener('click', () => this.newRun(this.state?.seed));
+      document.getElementById('pause-restart').addEventListener('click', () => this.newRun(this.state?.seed, this.state?.difficulty));
       document.getElementById('pause-title').addEventListener('click', () => {
         this.save();
         this.show('title');
@@ -302,7 +314,7 @@
 
       // End modal buttons
       document.getElementById('end-again').addEventListener('click', () => this.newRun());
-      document.getElementById('end-same').addEventListener('click', () => this.newRun(this.state?.seed));
+      document.getElementById('end-same').addEventListener('click', () => this.newRun(this.state?.seed, this.state?.difficulty));
       document.getElementById('end-menu').addEventListener('click', () => this.show('title'));
 
       // Mute toggle with localStorage persistence
@@ -324,19 +336,48 @@
         if (!btn) return;
         event.preventDefault();
         if (btn.dataset.hold) {
-          this.touchHeld.add(btn.dataset.hold);
+          this.touchPointers.set(event.pointerId, btn.dataset.hold);
+          this.syncTouch();
           if (btn.dataset.hold === 'shoot') this.pendingShot = true;
         } else if (btn.dataset.action) {
           const act = btn.dataset.action;
           if (act === 'pause') this.show('pause');
           else if (act === 'use') this.pendingUse = true;
-          else if (act.startsWith('weapon')) this.pendingWeapon = Number(act.slice(6));
+          else if (act === 'nextWeapon') this.cycleWeapon(1);
+          else if (act === 'prevWeapon') this.cycleWeapon(-1);
         }
       });
-      const clearTouch = () => this.touchHeld.clear();
-      this.el.touch.addEventListener('pointerup', clearTouch);
-      this.el.touch.addEventListener('pointercancel', clearTouch);
+      const releaseTouch = event => {
+        this.touchPointers.delete(event.pointerId);
+        this.syncTouch();
+      };
+      global.addEventListener('pointerup', releaseTouch);
+      global.addEventListener('pointercancel', releaseTouch);
       global.addEventListener('touchstart', () => this.enableTouch(), { passive: true, once: true });
+    }
+
+    syncTouch() {
+      this.touchHeld.clear();
+      for (const hold of this.touchPointers.values()) this.touchHeld.add(hold);
+    }
+
+    clearTouch() {
+      this.touchPointers.clear();
+      this.touchHeld.clear();
+    }
+
+    cycleWeapon(direction) {
+      if (!this.state) return;
+      const order = ['pistol', 'shotgun', 'chaingun', 'launcher'];
+      const p = this.state.player;
+      const at = order.indexOf(p.weapon);
+      for (let i = 1; i < order.length; i++) {
+        const next = (at + direction * i + order.length * 2) % order.length;
+        if (p.weapons[order[next]]) {
+          this.pendingWeapon = next + 1;
+          return;
+        }
+      }
     }
 
     enableTouch() {
@@ -346,13 +387,14 @@
 
     resize() {
       const coarse = global.innerWidth < 700;
-      this.view.resize(global.innerWidth, global.innerHeight, coarse ? [7, 10] : [8, 12]);
+      this.view.engine.maxDpr = this.quality.setting.maxDpr;
+      this.view.resize(global.innerWidth, global.innerHeight, this.quality.cell(coarse ? [7, 10] : [8, 12]));
     }
 
     show(mode) {
       this.mode = mode;
       this.held.clear();
-      this.touchHeld.clear();
+      this.clearTouch();
       if (mode !== 'play' && document.pointerLockElement) {
         document.exitPointerLock?.();
       }
@@ -383,10 +425,14 @@
       document.getElementById('daily-run').textContent = 'Daily sector · ' + today();
     }
 
-    newRun(seed) {
+    newRun(seed, difficulty) {
       seed = seed || Math.random().toString(36).slice(2, 8);
-      this.start(I.newGame(seed));
-      this.toast(`Sector ${seed}. WASD move · Arrows/Mouse turn · Space/Click fire · 1-4 weapons · P pause.`);
+      difficulty = difficulty || document.getElementById('difficulty').value;
+      this.start(I.newGame(seed, difficulty));
+      const controls = document.body.classList.contains('touch')
+        ? 'Left thumb moves · right thumb turns and fires.'
+        : 'WASD move · Arrows/Mouse turn · Space/Click fire · 1-4 weapons · P pause.';
+      this.toast(`Sector ${seed} · ${I.DIFFICULTIES[this.state.difficulty].label}. ${controls}`);
     }
 
     resume() {
@@ -468,7 +514,7 @@
       this.tint[0] = r;
       this.tint[1] = g;
       this.tint[2] = b;
-      this.tint[3] = alpha;
+      this.tint[3] = this.reducedMotion ? alpha * 0.35 : alpha;
       this.tintTimer = duration;
     }
 
@@ -612,6 +658,21 @@
       this.show('end');
     }
 
+    pollPad() {
+      const pad = this.pad;
+      pad.poll();
+      if (!pad.connected) return;
+      if (this.mode !== 'play') {
+        if (pad.pressed(0)) document.activeElement?.click?.();
+        if (pad.pressed(9) && this.mode === 'pause') this.show('play');
+        return;
+      }
+      if (pad.pressed(9)) this.show('pause');
+      if (pad.pressed(2)) this.pendingUse = true;
+      if (pad.pressed(4)) this.cycleWeapon(-1);
+      if (pad.pressed(5)) this.cycleWeapon(1);
+    }
+
     buildSceneArrays(world) {
       const camX = this.camera.x, camZ = this.camera.z;
       this._activeSprites.length = 0;
@@ -692,8 +753,10 @@
 
     frame(now) {
       const dt = Math.min(0.05, Math.max(0.001, (now - this.last) / 1000));
+      this.quality.sample(now - this.last);
       this.last = now;
       this.time += dt;
+      this.pollPad();
 
       if (this.mode === 'play' && this.state && !this.state.dead && !this.state.won) {
         const inp = this._stepInput;
@@ -704,11 +767,11 @@
         const keyTurn = (this.held.has('KeyE') || this.held.has('ArrowRight') || this.touchHeld.has('turnRight') ? 1 : 0) -
                         (this.held.has('KeyQ') || this.held.has('ArrowLeft') || this.touchHeld.has('turnLeft') ? 1 : 0);
 
-        inp.moveX = strafe;
-        inp.moveY = fwd;
-        inp.turn = keyTurn + this.mouseTurn / dt;
+        inp.moveX = Math.max(-1, Math.min(1, strafe + this.pad.axis(0)));
+        inp.moveY = Math.max(-1, Math.min(1, fwd - this.pad.axis(1)));
+        inp.turn = keyTurn + this.pad.axis(2) + this.mouseTurn / dt;
         this.mouseTurn = 0;
-        inp.shoot = this.pendingShot || this.held.has('Space') || this.held.has('KeyF') ||
+        inp.shoot = this.pendingShot || this.pad.held(7) || this.pad.held(0) || this.held.has('Space') || this.held.has('KeyF') ||
                     this.held.has('ControlLeft') || this.held.has('ControlRight') ||
                     this.held.has('Mouse0') || this.touchHeld.has('shoot');
         inp.use = this.pendingUse;
@@ -721,7 +784,7 @@
         const events = I.step(this.state, dt, inp);
         if (events.length) this.handleEvents(events);
 
-        const moving = Math.hypot(fwd, strafe) > 0.1;
+        const moving = Math.hypot(inp.moveX, inp.moveY) > 0.1;
         if (moving && !this.reducedMotion) this.bobPhase += dt * 9.0;
 
         const p = this.state.player;
@@ -743,7 +806,7 @@
           this.saveTimer = 0;
           this.save();
         }
-      } else if (this.mode === 'title') {
+      } else if (this.mode === 'title' && !this.reducedMotion) {
         this.camera.yaw += dt * 0.18;
       }
 

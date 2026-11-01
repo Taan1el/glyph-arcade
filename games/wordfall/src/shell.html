@@ -1,0 +1,120 @@
+<!doctype html>
+<!--__LICENSE__-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Wordfall · Catch the letters</title>
+<!--__META__-->
+<style>
+:root{--ink:#e8dcc0;--muted:#9c8f72;--gold:#ffcf56;--blue:#74b8d8;--panel:#0e1218e6;--line:#3e5266;font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#06080c;--safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px)}
+html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;overflow:hidden;background:#06080c}
+body.touch{touch-action:none}
+[hidden]{display:none!important}
+#view{display:block;width:100vw;height:100vh;height:100dvh;touch-action:none}
+button{font:inherit;cursor:pointer;background:#1b2530;color:var(--ink);border:1px solid #4f6980;padding:10px 16px;border-radius:2px}
+button:hover,button:focus-visible{background:#293848;outline:2px solid var(--gold);outline-offset:1px}
+button.primary{background:var(--gold);color:#1b1408;border-color:#ffe29b;font-weight:bold}
+button.small{padding:4px 9px;font-size:12px}
+.card{touch-action:pan-y;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #18222c;padding:30px 32px;box-shadow:0 18px 60px #000c}
+.card h1{font:bold 46px "Courier New",monospace;letter-spacing:.2em;margin:0 0 6px;color:var(--gold);text-shadow:0 0 18px #ffcf5655}
+.card h2{font-weight:normal;font-size:26px;margin:0 0 12px;color:var(--gold)}
+.card p{line-height:1.5;color:#cfc3a5}
+.eyebrow{font:11px "Courier New",monospace;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.note{font-size:13px;color:var(--muted)}
+.note a{color:var(--gold)}
+select{font:inherit;background:#1b2530;color:var(--ink);border:1px solid var(--line);padding:8px 10px;min-height:44px;margin-left:6px}
+select:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+dl.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:12px 0}
+dl.keys dt{font:13px "Courier New",monospace;color:var(--gold);white-space:nowrap}
+dl.keys dd{margin:0;color:#cfc3a5}
+#hud{position:absolute;inset:0;pointer-events:none;font:13px "Courier New",monospace}
+.stats{position:absolute;left:calc(10px + var(--safe-l));right:calc(10px + var(--safe-r));top:calc(8px + var(--safe-t));display:flex;gap:4px 10px;align-items:center;justify-content:center;color:#cfc3a5;white-space:nowrap}
+.stats button{pointer-events:auto}
+#clock{color:var(--gold);font-weight:bold}
+#combo:empty{display:none}
+#word{position:absolute;left:0;right:0;top:calc(58px + var(--safe-t));text-align:center;font:bold clamp(22px,6vw,34px) "Courier New",monospace;letter-spacing:.2em;color:var(--blue)}
+#word .done{color:#5f7f6a}
+#word .next{color:var(--gold);text-decoration:underline;text-underline-offset:5px}
+#toast{position:absolute;left:50%;top:38%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:8px 14px;font:13px "Courier New",monospace;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
+#toast.visible{opacity:1}
+#touch{position:absolute;left:0;right:0;bottom:0;height:0}
+#touch .pad,#touch .side{position:absolute;bottom:calc(10px + var(--safe-b));width:calc(50vw - 16px);height:clamp(70px,20vh,120px)}
+#touch .pad{left:calc(10px + var(--safe-l))}
+#touch .side{right:calc(10px + var(--safe-r))}
+#touch button{width:100%;height:100%;padding:0;font:28px "Courier New",monospace;background:#141b23a6;touch-action:none;user-select:none;-webkit-user-select:none}
+body.touch button.small{min-height:44px;min-width:44px}
+body.touch .stats{font-size:12px;gap:4px 8px}
+body:not([data-mode=play]) #touch{display:none}
+#fatal{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#06080c;color:var(--ink);padding:24px}
+@media(max-width:700px){.card{padding:22px}.card h1{font-size:32px}}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="view" aria-label="Giant letters falling through a dark field, drawn in coloured letters"></canvas>
+<section id="hud" hidden aria-label="Run status">
+  <div class="stats">
+    <span id="clock">2:00</span><span id="score"></span><span id="lives"></span><span id="combo"></span>
+    <button id="mute" class="small" type="button">Sound on</button>
+    <button id="pause-btn" class="small" type="button">Pause</button>
+  </div>
+  <div id="word" role="status"></div>
+</section>
+<div id="toast" role="status"></div>
+<nav id="touch" hidden aria-label="Touch controls">
+  <div class="pad"><button data-hold="left" aria-label="Move left">&#9664;</button></div>
+  <div class="side"><button data-hold="right" aria-label="Move right">&#9654;</button></div>
+</nav>
+<section id="title" class="card" aria-labelledby="title-heading">
+  <div class="eyebrow">Glyph Arcade · two minutes of letters</div>
+  <h1 id="title-heading">WORDFALL</h1>
+  <p>Letters rain down in nine lanes. Slide along the floor and catch the gold letter that comes next in the word. Every other letter costs a life. Finish words in a row to build a combo.</p>
+  <div class="row">
+    <button id="new-run" class="primary" type="button">New run</button>
+    <button id="daily-run" type="button">Daily words</button>
+    <button id="how-to" type="button">How to play</button>
+  </div>
+  <label class="note">Difficulty<select id="difficulty"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
+  <p id="best" class="note"></p>
+  <p class="note">Each seed drops the same words. <a href="index.html">More games in the arcade</a></p>
+</section>
+<section id="pause" class="card" hidden aria-labelledby="pause-heading">
+  <div class="eyebrow">Paused</div>
+  <h2 id="pause-heading">Letters on hold</h2>
+  <div class="row">
+    <button id="resume-btn" class="primary" type="button">Resume</button>
+    <button id="pause-help" type="button">Controls</button>
+    <button id="pause-restart" type="button">Restart</button>
+    <button id="pause-title" type="button">Title screen</button>
+  </div>
+</section>
+<section id="help" class="card" hidden aria-labelledby="help-heading">
+  <div class="eyebrow">How it works</div>
+  <h2 id="help-heading">How to play Wordfall</h2>
+  <dl class="keys">
+    <dt>← → · A / D</dt><dd>Slide one lane. Hold to keep sliding.</dd>
+    <dt>Touch</dt><dd>Tap or hold the left and right halves of the bottom bar.</dd>
+    <dt>P / Esc</dt><dd>Pause.</dd>
+    <dt>Gamepad</dt><dd>Left stick or d-pad slides, Start pauses. Controls are fixed for now and cannot be remapped.</dd>
+  </dl>
+  <p>Gold letters are the one you need next. Blue letters cost a life if they land on you. Letters that land elsewhere do nothing, so you can let any of them pass. Survive two minutes for a bonus on every life left.</p>
+  <div class="row"><button id="help-back" class="primary" type="button">Back</button></div>
+</section>
+<section id="end" class="card" hidden aria-labelledby="end-title">
+  <div class="eyebrow">Run complete</div>
+  <h2 id="end-title"></h2>
+  <p id="end-detail"></p>
+  <p id="end-score" class="note"></p>
+  <div class="row">
+    <button id="end-again" class="primary" type="button">New run</button>
+    <button id="end-same" type="button">Same seed</button>
+    <button id="end-menu" type="button">Title</button>
+  </div>
+</section>
+<div id="fatal" hidden><h2>Wordfall could not start</h2><p></p></div>
+<script>/*__CODE__*/</script>
+</body>
+</html>

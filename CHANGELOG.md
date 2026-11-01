@@ -2,6 +2,31 @@
 
 All notable changes to Glyph Arcade are documented in this file.
 
+## [0.3.0] - 2026-11-02
+
+### Added
+- **Wordfall (`games/wordfall/`)**: A two-minute lane game on the shared engine, with rules, scene, app, shell, 12 rule checks, a preview image and a smoke test.
+- **Difficulty**: Easy, Normal and Hard on every title screen.
+- **Gamepad support**: `engine/glyph-input.js`, wired into all three games.
+- **Adaptive quality**: `engine/glyph-quality.js` lowers resolution when frames run long.
+- **Tooling**: `tools/balance.cjs` (`npm run balance`), `tests/balance.test.cjs` (`npm run test:balance`), `tools/perf.cjs` (`npm run perf`), and `tools/layout-check.cjs`, which fails on overlapping HUD panels or tap targets under 44px.
+- **Reports**: `PLAYTEST.md` and `PERF.md`.
+
+### Changed
+- **Touch layout**: Left thumb moves, right thumb turns and acts, in both Delve and Inkfire. Safe-area insets, overscroll and text selection are handled on phones.
+- **Inkfire balance**: Retuned weapons, monsters and pickups. Normal bots now win 37%, die 60.5% and time out 2.5% over 200 seeds.
+- **Delve balance**: Weaker lich and a shared `botAction` on the rules module.
+- **Portal**: The Next Stop card is now clearly marked as an external site.
+- **Service worker**: The cache name is a hash of the shipped files, and the asset list is generated at build time, so players never keep stale files.
+- **Reduced motion**: Full-screen flashes are softer and the title camera holds still.
+
+### Fixed
+- **Inkfire**: Lifting one thumb no longer releases every held touch control.
+- **Inkfire**: `E` now turns right as documented; it was captured by the use action.
+- **Inkfire**: Touch players can reach every weapon, including the launcher.
+- **Delve**: Holding a touch movement button now keeps walking.
+- **Accessibility**: Delve's mute button reports its state to screen readers.
+
 ## [0.2.0] - 2026-10-31
 
 ### Added
