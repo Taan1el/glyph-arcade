@@ -83,6 +83,27 @@ const out = path.join(root, 'dist/previews');
     await page.screenshot({ path: path.join(out, 'inkfire.png') });
     console.log('Wrote dist/previews/inkfire.png');
 
+    // 3. Capture Wordfall preview
+    await page.goto(pathToFileURL(path.join(root, 'dist/wordfall.html')).href);
+    await page.waitForFunction(() => window.wordfall);
+    await page.evaluate(() => {
+      const W = window.Wordfall, app = window.wordfall;
+      app.newRun('preview-words', 'normal');
+      const s = app.state;
+      s.word = 'LANTERN';
+      s.progress = 3;
+      s.lane = 4;
+      s.drops = [['T', 4, 0.56], ['K', 1, 0.28], ['Q', 7, 0.7], ['T', 2, 0.14], ['M', 5, 0.38], ['E', 8, 0.08]]
+        .map(([glyph, lane, y], i) => ({ id: i + 1, glyph, lane, y }));
+      app.wordKey = '';
+      app.updateHud();
+      app.mode = 'pause';
+      document.getElementById('toast').classList.remove('visible');
+    });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(out, 'wordfall.png') });
+    console.log('Wrote dist/previews/wordfall.png');
+
     // Rebuild launcher so dist/index.html embeds the newly generated preview images
     buildLauncher({ siteUrl: process.env.PAGES_URL || '' });
   } finally {

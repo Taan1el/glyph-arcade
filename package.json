@@ -8,8 +8,11 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "build": "node tools/build.cjs",
-    "test": "node tools/check-license.cjs && node games/delve/test/rules.test.cjs && node games/inkfire/test/rules.test.cjs",
-    "test:browser": "node tests/browser-smoke.cjs",
+    "test": "node tools/check-license.cjs && node games/delve/test/rules.test.cjs && node games/inkfire/test/rules.test.cjs && node games/wordfall/test/rules.test.cjs",
+    "test:balance": "node tests/balance.test.cjs",
+    "test:browser": "node tests/browser-smoke.cjs && node tools/layout-check.cjs",
+    "balance": "node tools/balance.cjs",
+    "perf": "node tools/perf.cjs",
     "previews": "node tools/capture-previews.cjs"
   },
   "devDependencies": {
