@@ -428,3 +428,17 @@ nothing added to commit but untracked files present (use "git add" to track)
 - Captured mid-gameplay screenshots across `360x640` portrait, `844x390` landscape, and `1280x720` desktop for both Delve and Inkfire (`delve-360x640-portrait.png`, `delve-844x390-landscape.png`, `delve-1280x720-desktop.png`, `inkfire-360x640-portrait.png`, `inkfire-844x390-landscape.png`, `inkfire-1280x720-desktop.png`).
 - Inspected all screenshots and bounding-box metrics, documenting 7 concrete UI/UX and mobile ergonomics defects in `PLAYTEST.md` prior to making code changes.
 - End-of-Phase Ritual executed (`npm run build`, `npm test`, `npm run test:browser`) with 0 errors.
+
+### Polish Pass Status (Phases A-F): COMPLETE WITH GAPS
+Phase A was finished before the first agent ran out of tokens, partway through Phase B. Phases B to F were completed afterwards.
+
+- **Phase A, playtest**: `PLAYTEST.md` lists defects D1 to D7. All are fixed and `tools/layout-check.cjs` guards them at 360x640 and 844x390.
+- **Phase B, balance**: `tools/balance.cjs` runs 200 seeds per difficulty. Bot timeouts were caused by bots circling blocked pickups, fixed by giving up after three seconds.
+  - Inkfire (normal and hard after the final tuning, easy before it): Easy 60 / 37 / 3, Normal 37 / 60.5 / 2.5, Hard 22 / 75.5 / 2.5 (win / death / timeout %).
+  - Delve: Easy 99.5 / 0.5 / 0, Normal 71 / 29 / 0, Hard 24.5 / 75.5 / 0.
+  - The Inkfire target (win 15-30, death 40-60, timeout under 10) cannot be met in full, because those maximums sum to under 100%. Timeouts and deaths were kept in range, leaving Normal wins at 37%.
+  - Bots are not people. These numbers still need a human playtest, and Delve Easy looks too easy.
+- **Phase C, mobile feel**: Done. Gamepad code has not been tested with a physical controller.
+- **Phase D, performance**: `PERF.md`. Only Wordfall meets the 22ms p95 target in software rendering. Delve and Inkfire miss it, and no real device has been measured.
+- **Phase E, third game**: Wordfall is complete.
+- **Phase F, release prep**: Done, except that the portal footer links to `github.com/Taan1el/glyph-arcade`, which does not exist until the repository is created.

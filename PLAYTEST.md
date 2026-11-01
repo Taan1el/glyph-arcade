@@ -1,5 +1,7 @@
 # Glyph Arcade — Visual Playtest & Ergonomics Report
 
+> Status 2026-11-02: defects D1 to D7 below are fixed, and `tools/layout-check.cjs` guards them.
+
 Mid-gameplay screenshots were captured in Chromium via Playwright across three target viewports for both **Delve** and **Inkfire**:
 - **Mobile Portrait (`360×640`)**: `delve-360x640-portrait.png`, `inkfire-360x640-portrait.png` (touch mode active)
 - **Mobile Landscape (`844×390`)**: `delve-844x390-landscape.png`, `inkfire-844x390-landscape.png` (touch mode active)
