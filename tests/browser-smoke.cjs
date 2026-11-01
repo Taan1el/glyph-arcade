@@ -23,7 +23,7 @@ const { pathToFileURL } = require('node:url');
       const skipLink = Boolean(document.querySelector('a.skip-link'));
       return { cards, overflow, manifest, skipLink };
     });
-    if (!portalInfo.cards.includes('delve.html') || !portalInfo.cards.includes('inkfire.html')) {
+    if (!portalInfo.cards.includes('delve.html') || !portalInfo.cards.includes('inkfire.html') || !portalInfo.cards.includes('wordfall.html')) {
       throw new Error('Portal is missing delve.html or inkfire.html card: ' + JSON.stringify(portalInfo.cards));
     }
     if (portalInfo.overflow) throw new Error('Portal overflows horizontally at 360px viewport width');
@@ -79,8 +79,30 @@ const { pathToFileURL } = require('node:url');
     }));
     if (inkfireOut.cells < 6) throw new Error('Inkfire scene drew too few distinct letters: ' + inkfireOut.cells);
     if (process.argv[2]) await page.screenshot({ path: process.argv[2] });
-    if (errors.length) throw new Error(errors.join('\n'));
     console.log('PASS Inkfire boots, plays, pauses/mutes and renders', JSON.stringify(inkfireOut));
+
+    // 4. Wordfall smoke check
+    await page.goto(pathToFileURL(path.join(__dirname, '../dist/wordfall.html')).href);
+    await page.waitForTimeout(800);
+    if (await page.evaluate(() => !document.getElementById('fatal').hidden)) {
+      throw new Error('Wordfall fatal: ' + await page.textContent('#fatal p'));
+    }
+    await page.click('#new-run');
+    await page.waitForTimeout(2200);
+    const lane = await page.evaluate(() => window.wordfall.state.lane);
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(150);
+    const wordfallOut = await page.evaluate(() => ({
+      lane: window.wordfall.state.lane,
+      drops: window.wordfall.state.drops.length,
+      word: window.wordfall.state.word,
+      cells: new Set(window.wordfall.view.inspect().glyphs).size
+    }));
+    if (wordfallOut.lane !== lane - 1) throw new Error('Wordfall did not move on ArrowLeft');
+    if (!wordfallOut.drops) throw new Error('Wordfall dropped no letters');
+    if (wordfallOut.cells < 6) throw new Error('Wordfall scene drew too few distinct letters: ' + wordfallOut.cells);
+    if (errors.length) throw new Error(errors.join('\n'));
+    console.log('PASS Wordfall boots, moves and renders', JSON.stringify(wordfallOut));
   } finally {
     await browser.close();
   }
