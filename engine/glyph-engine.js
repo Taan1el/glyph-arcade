@@ -205,7 +205,7 @@
       this.width=Math.max(1,Math.round(width));this.height=Math.max(1,Math.round(height));
       this.cellSize[0]=cellSize[0];this.cellSize[1]=cellSize[1];
       this.columns=Math.max(1,Math.ceil(this.width/cellSize[0]));this.rows=Math.max(1,Math.ceil(this.height/cellSize[1]));
-      this.dpr=Math.min(2,Math.max(1,global.devicePixelRatio||1));
+      this.dpr=Math.min(this.maxDpr||2,Math.max(1,global.devicePixelRatio||1));
       this.canvas.width=Math.round(this.width*this.dpr);this.canvas.height=Math.round(this.height*this.dpr);
       const gl=this.gl;gl.bindFramebuffer(gl.FRAMEBUFFER,this.framebuffer);
       for(let i=0;i<3;i++){const value=this.cellTextures[i];gl.bindTexture(gl.TEXTURE_2D,value);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8UI,this.columns,this.rows,0,gl.RGBA_INTEGER,gl.UNSIGNED_BYTE,null);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0+i,gl.TEXTURE_2D,value,0);}
