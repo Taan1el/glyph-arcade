@@ -9,18 +9,24 @@
   const WALL = 0, FLOOR = 1, DOOR = 2, DOOR_RED = 3, DOOR_BLUE = 4, EXIT = 5;
 
   const MONSTERS = {
-    trooper: { name: 'trooper', hp: 30, speed: 2.2, attackRange: 10, cooldown: 1.0, score: 50, drop: 'clip', size: 0.35, melee: false },
-    spitter: { name: 'spitter', hp: 60, speed: 1.8, attackRange: 11, cooldown: 1.4, score: 100, drop: 'shells', size: 0.38, melee: false },
-    brute:   { name: 'brute',   hp: 160, speed: 3.2, attackRange: 1.1, cooldown: 0.6, score: 150, drop: 'stim', size: 0.45, melee: true },
-    wisp:    { name: 'wisp',    hp: 40, speed: 2.6, attackRange: 10, cooldown: 1.2, score: 120, drop: 'clip', size: 0.35, melee: false },
-    titan:   { name: 'titan',   hp: 900, speed: 1.2, attackRange: 14, cooldown: 2.0, score: 1000, drop: null, size: 0.60, melee: false, boss: true }
+    trooper: { name: 'trooper', hp: 28, speed: 2.2, attackRange: 9.5, cooldown: 1.05, dmg: 9, score: 50, drop: 'clip', size: 0.35, melee: false },
+    spitter: { name: 'spitter', hp: 52, speed: 1.9, attackRange: 10.5, cooldown: 1.35, dmg: 14, score: 100, drop: 'shells', size: 0.38, melee: false },
+    brute:   { name: 'brute',   hp: 120, speed: 3.1, attackRange: 1.15, cooldown: 0.65, dmg: 19, score: 150, drop: 'stim', size: 0.44, melee: true },
+    wisp:    { name: 'wisp',    hp: 36, speed: 2.6, attackRange: 9.5, cooldown: 1.20, dmg: 12, score: 120, drop: 'clip', size: 0.35, melee: false },
+    titan:   { name: 'titan',   hp: 280, speed: 1.3, attackRange: 13.0, cooldown: 1.85, dmg: 34, score: 1000, drop: 'medkit', size: 0.58, melee: false, boss: true }
+  };
+
+  const DIFFICULTIES = {
+    easy:   { name: 'easy',   label: 'Easy',   hpMul: 0.70, dmgMul: 0.55, spawnMul: 0.70, startArmour: 75, startBullets: 70 },
+    normal: { name: 'normal', label: 'Normal', hpMul: 0.96, dmgMul: 0.74, spawnMul: 1.00, startArmour: 42, startBullets: 58 },
+    hard:   { name: 'hard',   label: 'Hard',   hpMul: 1.18, dmgMul: 1.1, spawnMul: 1.15, startArmour: 20, startBullets: 44 }
   };
 
   const WEAPONS = {
-    pistol:   { name: 'pistol', ammoType: 'bullets', cost: 1, fireRate: 0.35, damage: 15, spread: 0.02, pellets: 1 },
-    shotgun:  { name: 'shotgun', ammoType: 'shells', cost: 1, fireRate: 0.75, damage: 9, spread: 0.14, pellets: 7 },
-    chaingun: { name: 'chaingun', ammoType: 'bullets', cost: 1, fireRate: 0.10, damage: 12, spread: 0.05, pellets: 1 },
-    launcher: { name: 'launcher', ammoType: 'rockets', cost: 1, fireRate: 0.85, damage: 90, splashRadius: 2.5, splashDamage: 80, pellets: 1 }
+    pistol:   { name: 'pistol', ammoType: 'bullets', cost: 1, fireRate: 0.32, damage: 16, spread: 0.02, pellets: 1 },
+    shotgun:  { name: 'shotgun', ammoType: 'shells', cost: 1, fireRate: 0.70, damage: 10, spread: 0.13, pellets: 7 },
+    chaingun: { name: 'chaingun', ammoType: 'bullets', cost: 1, fireRate: 0.10, damage: 13, spread: 0.05, pellets: 1 },
+    launcher: { name: 'launcher', ammoType: 'rockets', cost: 1, fireRate: 0.80, damage: 95, splashRadius: 2.6, splashDamage: 85, pellets: 1 }
   };
 
   const MAX_AMMO = { bullets: 200, shells: 50, rockets: 50 };
@@ -242,7 +248,9 @@
   }
 
   // --- New Game Setup
-  function newGame(seed = 'inkfire-seed-1') {
+  function newGame(seed = 'inkfire-seed-1', difficulty = 'normal') {
+    const diffKey = DIFFICULTIES[difficulty] ? difficulty : 'normal';
+    const diff = DIFFICULTIES[diffKey];
     const map = generateMap(seed);
     const rng = map.rng;
     let nextId = 1;
@@ -251,14 +259,14 @@
       x: map.startRoom.cx + 0.5,
       y: map.startRoom.cy + 0.5,
       angle: 0,
-      radius: 0.32,
+      radius: 0.30,
       hp: 100,
       maxHp: 100,
-      armour: 25,
+      armour: diff.startArmour,
       maxArmour: 100,
       weapon: 'pistol',
       weapons: { pistol: true, shotgun: false, chaingun: false, launcher: false },
-      ammo: { bullets: 40, shells: 0, rockets: 0 },
+      ammo: { bullets: diff.startBullets, shells: 0, rockets: 0 },
       keys: { red: false, blue: false },
       cooldown: 0
     };
@@ -278,10 +286,10 @@
       items.push({ id: nextId++, kind: 'gun.shotgun', x: otherRooms[0].cx + 0.5, y: otherRooms[0].cy + 0.5, collected: false });
     }
     if (otherRooms.length > 2) {
-      items.push({ id: nextId++, kind: 'gun.chaingun', x: map.blueKeyRoom.x + 1.5, y: map.blueKeyRoom.y + 1.5, collected: false });
+      items.push({ id: nextId++, kind: 'gun.chaingun', x: map.redKeyRoom.x + 1.5, y: map.redKeyRoom.y + 1.5, collected: false });
     }
     if (otherRooms.length > 3) {
-      items.push({ id: nextId++, kind: 'gun.launcher', x: map.titanRoom.x + 1.5, y: map.titanRoom.y + 1.5, collected: false });
+      items.push({ id: nextId++, kind: 'gun.launcher', x: map.blueKeyRoom.x + 1.5, y: map.blueKeyRoom.y + 1.5, collected: false });
     }
 
     // Place Health, Armour, and Ammo in rooms
@@ -292,7 +300,7 @@
         continue;
       }
       // Supplies
-      const count = int(rng, 1, 3);
+      const count = int(rng, 2, 3);
       for (let c = 0; c < count; c++) {
         const ix = int(rng, r.x + 1, r.x + r.w - 2) + 0.5;
         const iy = int(rng, r.y + 1, r.y + r.h - 2) + 0.5;
@@ -301,7 +309,7 @@
       }
 
       // Barrels
-      if (random(rng) < 0.7) {
+      if (random(rng) < 0.65) {
         const bx = int(rng, r.x + 1, r.x + r.w - 2) + 0.5;
         const by = int(rng, r.y + 1, r.y + r.h - 2) + 0.5;
         barrels.push({ id: nextId++, x: bx, y: by, hp: 20, dead: false, radius: 0.35 });
@@ -313,14 +321,15 @@
     }
 
     // Spawn Boss Titan in Titan Room
+    const titanHp = Math.round(MONSTERS.titan.hp * diff.hpMul);
     monsters.push({
       id: nextId++,
       kind: 'titan',
       x: map.titanRoom.cx + 0.5,
       y: map.titanRoom.cy + 0.5,
       angle: Math.PI,
-      hp: MONSTERS.titan.hp,
-      maxHp: MONSTERS.titan.hp,
+      hp: titanHp,
+      maxHp: titanHp,
       state: 'idle',
       frame: 'walk0',
       animTimer: 0,
@@ -331,20 +340,22 @@
     // Spawn Enemies across rooms
     for (const r of otherRooms) {
       if (r === map.exitRoom) continue;
-      const count = r === map.titanRoom ? int(rng, 1, 2) : int(rng, 2, 4);
+      const baseCount = r === map.titanRoom ? int(rng, 1, 2) : int(rng, 2, 3);
+      const count = Math.max(1, Math.round(baseCount * diff.spawnMul));
       for (let i = 0; i < count; i++) {
         const mx = int(rng, r.x + 1, r.x + r.w - 2) + 0.5;
         const my = int(rng, r.y + 1, r.y + r.h - 2) + 0.5;
         const kind = pick(rng, ['trooper', 'trooper', 'spitter', 'brute', 'wisp']);
         const info = MONSTERS[kind];
+        const mHp = Math.max(1, Math.round(info.hp * diff.hpMul));
         monsters.push({
           id: nextId++,
           kind,
           x: mx,
           y: my,
           angle: random(rng) * Math.PI * 2,
-          hp: info.hp,
-          maxHp: info.hp,
+          hp: mHp,
+          maxHp: mHp,
           state: 'idle',
           frame: 'walk0',
           animTimer: random(rng) * 0.4,
@@ -357,6 +368,7 @@
     return {
       version: 1,
       seed,
+      difficulty: diffKey,
       rng: rng.rng,
       nextId,
       time: 0,
@@ -788,15 +800,17 @@
           m.cooldown = mInfo.cooldown;
 
           // Perform attack action
+          const dmgMul = (DIFFICULTIES[state.difficulty] || DIFFICULTIES.normal).dmgMul;
+          const scaledDmg = Math.max(1, Math.round(mInfo.dmg * dmgMul));
           if (mInfo.melee) {
             // Melee bite
-            if (distToPlayer <= 1.2) {
-              damagePlayer(state, 22, events, 'brute');
+            if (distToPlayer <= 1.25) {
+              damagePlayer(state, scaledDmg, events, 'brute');
             }
           } else if (m.kind === 'trooper') {
             // Trooper rifle hitscan
             events.push({ type: 'monster_shoot', kind: 'trooper', x: m.x, y: m.y });
-            damagePlayer(state, 10, events, 'trooper');
+            damagePlayer(state, scaledDmg, events, 'trooper');
           } else if (m.kind === 'spitter') {
             // Fireball projectile
             events.push({ type: 'monster_shoot', kind: 'spitter', x: m.x, y: m.y });
@@ -807,7 +821,7 @@
               y: m.y + Math.sin(m.angle) * 0.4,
               vx: Math.cos(m.angle) * 6.5,
               vy: Math.sin(m.angle) * 6.5,
-              damage: 16,
+              damage: scaledDmg,
               owner: 'monster',
               life: 4.0
             });
@@ -821,7 +835,7 @@
               y: m.y + Math.sin(m.angle) * 0.4,
               vx: Math.cos(m.angle) * 8.0,
               vy: Math.sin(m.angle) * 8.0,
-              damage: 14,
+              damage: scaledDmg,
               owner: 'monster',
               life: 4.0
             });
@@ -833,11 +847,11 @@
               kind: 'rocket',
               x: m.x + Math.cos(m.angle) * 0.5,
               y: m.y + Math.sin(m.angle) * 0.5,
-              vx: Math.cos(m.angle) * 8.5,
-              vy: Math.sin(m.angle) * 8.5,
-              damage: 50,
+              vx: Math.cos(m.angle) * 8.0,
+              vy: Math.sin(m.angle) * 8.0,
+              damage: scaledDmg,
               splashRadius: 2.2,
-              splashDamage: 45,
+              splashDamage: Math.round(scaledDmg * 0.85),
               owner: 'monster',
               life: 5.0
             });
@@ -967,10 +981,160 @@
     return JSON.parse(JSON.stringify(data));
   }
 
+  // --- Headless Bot Controller (used by balance tools and unit tests)
+  function botInput(state, mem = state._botMem || (state._botMem = { lx: 0, ly: 0, lt: 0, unstick: 0, itemId: 0, itemSince: 0, skipped: {} })) {
+    const p = state.player;
+    const input = { moveX: 0, moveY: 0, turn: 0, shoot: false, use: true, switchWeapon: null };
+
+    // 1. Select best available weapon with ammo
+    let hasAmmo = false;
+    for (const w of ['launcher', 'chaingun', 'shotgun', 'pistol']) {
+      const info = WEAPONS[w];
+      if (p.weapons[w] && p.ammo[info.ammoType] >= info.cost) {
+        hasAmmo = true;
+        if (p.weapon !== w) input.switchWeapon = w;
+        break;
+      }
+    }
+
+    // 2. Unstick detection: if barely moved in 0.45s, recenter in tile and strafe
+    if (state.time - mem.lt >= 0.45) {
+      if (Math.hypot(p.x - mem.lx, p.y - mem.ly) < 0.12) {
+        mem.unstick = 0.45;
+      }
+      mem.lx = p.x;
+      mem.ly = p.y;
+      mem.lt = state.time;
+    }
+
+    // 3. Determine navigation target: nearby useful pickup -> red key -> blue key -> exit
+    let goalX = null, goalY = null;
+    for (const it of state.items) {
+      if (it.collected || mem.skipped[it.id]) continue;
+      const d = Math.hypot(it.x - p.x, it.y - p.y);
+      if (d > 4.2) continue;
+      const wantGun = it.kind.startsWith('gun.') && !p.weapons[it.kind.slice(4)];
+      const wantHeal = (it.kind === 'medkit' || it.kind === 'stim') && p.hp < 75;
+      const wantArm = it.kind === 'armour' && p.armour < 50;
+      const wantAmmo = (it.kind === 'clip' || it.kind === 'bulletbox') && p.ammo.bullets < 35;
+      if ((wantGun || wantHeal || wantArm || wantAmmo) && lineOfSight(state, p.x, p.y, it.x, it.y)) {
+        // Give up on a pickup that is blocked (for example by a barrel) instead of circling it.
+        if (mem.itemId !== it.id) {
+          mem.itemId = it.id;
+          mem.itemSince = state.time;
+        } else if (state.time - mem.itemSince > 3) {
+          mem.skipped[it.id] = true;
+          continue;
+        }
+        goalX = it.x; goalY = it.y;
+        break;
+      }
+    }
+
+    if (goalX === null) {
+      const redKey = state.items.find(i => i.kind === 'key.red' && !i.collected);
+      const blueKey = state.items.find(i => i.kind === 'key.blue' && !i.collected);
+      if (!p.keys.red && redKey) {
+        goalX = redKey.x; goalY = redKey.y;
+      } else if (!p.keys.blue && blueKey) {
+        goalX = blueKey.x; goalY = blueKey.y;
+      } else {
+        const exitIdx = state.tiles.findIndex(t => t === EXIT);
+        if (exitIdx >= 0) {
+          goalX = (exitIdx % SIZE) + 0.5;
+          goalY = Math.floor(exitIdx / SIZE) + 0.5;
+        }
+      }
+    }
+
+    // Compute waypoint toward goal (caching BFS distance field until goal or keys change)
+    let navAngle = p.angle;
+    if (goalX !== null) {
+      const gxGoal = Math.floor(goalX), gyGoal = Math.floor(goalY);
+      if (!mem.field || mem.gxGoal !== gxGoal || mem.gyGoal !== gyGoal || mem.red !== p.keys.red || mem.blue !== p.keys.blue) {
+        mem.field = distances(state.tiles, goalX, goalY, { allowRed: p.keys.red, allowBlue: p.keys.blue });
+        mem.gxGoal = gxGoal;
+        mem.gyGoal = gyGoal;
+        mem.red = p.keys.red;
+        mem.blue = p.keys.blue;
+      }
+      const field = mem.field;
+      const gx = Math.floor(p.x), gy = Math.floor(p.y);
+      let bestDir = null, bestScore = field[index(gx, gy)];
+      for (const [dx, dy] of DIRS) {
+        const s = field[index(gx + dx, gy + dy)];
+        if (s !== undefined && s < bestScore) {
+          bestScore = s;
+          bestDir = [gx + dx + 0.5, gy + dy + 0.5];
+        }
+      }
+      const target = bestDir || [goalX, goalY];
+      // Blend tile-center alignment when entering a doorway or corridor
+      const cx = gx + 0.5, cy = gy + 0.5;
+      const tx = Math.hypot(p.x - cx, p.y - cy) > 0.22 ? (target[0] * 0.65 + cx * 0.35) : target[0];
+      const ty = Math.hypot(p.x - cx, p.y - cy) > 0.22 ? (target[1] * 0.65 + cy * 0.35) : target[1];
+      navAngle = Math.atan2(ty - p.y, tx - p.x);
+    }
+
+    // 4. Check for nearby visible monster (or blocking barrel)
+    let targetMonster = null;
+    let bestMonsterDist = Infinity;
+    if (hasAmmo) {
+      for (const m of state.monsters) {
+        if (m.state === 'corpse') continue;
+        const d = Math.hypot(m.x - p.x, m.y - p.y);
+        if (d < 9.5 && lineOfSight(state, p.x, p.y, m.x, m.y) && d < bestMonsterDist) {
+          bestMonsterDist = d;
+          targetMonster = m;
+        }
+      }
+    }
+
+    if (mem.unstick > 0) {
+      mem.unstick = Math.max(0, mem.unstick - 0.05);
+      // Check if a barrel is blocking us and shoot it
+      for (const b of state.barrels) {
+        if (!b.dead && Math.hypot(b.x - p.x, b.y - p.y) < 1.5) {
+          const bAngle = Math.atan2(b.y - p.y, b.x - p.x);
+          const diff = ((bAngle - p.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+          input.turn = Math.max(-1, Math.min(1, diff * 6));
+          input.shoot = true;
+          input.moveY = -0.8;
+          return input;
+        }
+      }
+    }
+
+    if (targetMonster) {
+      const aimAngle = Math.atan2(targetMonster.y - p.y, targetMonster.x - p.x);
+      const diff = ((aimAngle - p.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      input.turn = Math.max(-1, Math.min(1, diff * 5));
+      if (Math.abs(diff) < 0.28) input.shoot = true;
+      // Keep advancing along navAngle in local coordinates while strafing combat
+      const relNav = navAngle - p.angle;
+      if (bestMonsterDist < 2.2) {
+        input.moveY = -0.9;
+        input.moveX = (Math.floor(state.time * 3) % 2 === 0) ? 0.8 : -0.8;
+      } else {
+        input.moveY = Math.cos(relNav) * 0.75;
+        input.moveX = Math.sin(relNav) * 0.75 + ((Math.floor(state.time * 2) % 2 === 0) ? 0.45 : -0.45);
+      }
+      return input;
+    }
+
+    const diff = ((navAngle - p.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    input.turn = Math.max(-1, Math.min(1, diff * 5.5));
+    input.moveY = Math.abs(diff) < 0.9 ? 1.0 : 0.35;
+    if (mem.unstick > 0) {
+      input.moveX = (Math.floor(state.time * 4) % 2 === 0) ? 0.9 : -0.9;
+    }
+    return input;
+  }
+
   // Export
   global.Inkfire = {
     SIZE, WALL, FLOOR, DOOR, DOOR_RED, DOOR_BLUE, EXIT, DIRS,
-    MONSTERS, WEAPONS, MAX_AMMO,
-    newGame, step, score, restore, tileAt, doorAt, isPassable, isSeeThrough, lineOfSight, distances, hashString, index
+    MONSTERS, DIFFICULTIES, WEAPONS, MAX_AMMO,
+    newGame, step, score, restore, botInput, tileAt, doorAt, isPassable, isSeeThrough, lineOfSight, distances, hashString, index
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -16,7 +16,12 @@
     archer:   {glyph:'A',name:'skeleton archer',hp:8,atk:3,def:1,xp:7,depths:[3,5],weight:2,range:5},
     wraith:   {glyph:'W',name:'wraith',hp:14,atk:5,def:1,xp:9,depths:[4,5],weight:2,fast:true},
     ogre:     {glyph:'O',name:'ogre',hp:26,atk:7,def:2,xp:15,depths:[4,5],weight:1},
-    lich:     {glyph:'L',name:'lich',hp:60,atk:9,def:3,xp:60,depths:[5,5],weight:0,range:6,boss:true}
+    lich:     {glyph:'L',name:'lich',hp:50,atk:8,def:2,xp:60,depths:[5,5],weight:0,range:6,boss:true}
+  };
+  const DIFFICULTIES = {
+    easy:   {name:'easy',label:'Easy',startHp:26,startPotions:2,hpMul:0.82,atkMod:-1},
+    normal: {name:'normal',label:'Normal',startHp:20,startPotions:1,hpMul:1.0,atkMod:0},
+    hard:   {name:'hard',label:'Hard',startHp:18,startPotions:1,hpMul:1.15,atkMod:1}
   };
   const WEAPONS = [{name:'dagger',atk:0},{name:'short sword',atk:2},{name:'war axe',atk:3},{name:'longsword',atk:5},{name:'rune blade',atk:7}];
   const ARMOURS = [{name:'tunic',def:0},{name:'leather coat',def:1},{name:'chain mail',def:2},{name:'scale armour',def:3},{name:'plate armour',def:4}];
@@ -101,9 +106,11 @@
     reveal(state);
   }
   function spawn(state,kind,x,y){
-    const m=MONSTERS[kind],scale=1+Math.max(0,state.depth-m.depths[0])*.12;
+    const m=MONSTERS[kind],diff=DIFFICULTIES[state.difficulty]||DIFFICULTIES.normal;
+    const scale=(1+Math.max(0,state.depth-m.depths[0])*.12)*diff.hpMul;
     if(!Number.isFinite(scale))throw new Error('Monster '+kind+' has no depth range.');
-    const monster={id:state.nextId++,kind,x,y,hp:Math.round(m.hp*scale),maxHp:Math.round(m.hp*scale),atk:m.atk,def:m.def,seen:null,cooldown:0};
+    const hp=Math.max(1,Math.round(m.hp*scale)),atk=Math.max(1,m.atk+diff.atkMod);
+    const monster={id:state.nextId++,kind,x,y,hp,maxHp:hp,atk,def:m.def,seen:null,cooldown:0};
     state.monsters.push(monster);return monster;
   }
 
@@ -126,10 +133,11 @@
     }
   }
 
-  function newRun(seed){
+  function newRun(seed,difficulty='normal'){
     seed=String(seed||'delve').slice(0,40);
-    const state={version:1,seed,rng:hashString(seed+'|run'),depth:1,turn:0,nextId:1,kills:0,gold:0,dead:false,won:false,cause:null,log:[],
-      player:{x:0,y:0,facing:1,hp:20,maxHp:20,baseAtk:4,baseDef:0,level:1,xp:0,potions:1,scrolls:0,weapon:0,armour:0}};
+    const diffKey=DIFFICULTIES[difficulty]?difficulty:'normal',diff=DIFFICULTIES[diffKey];
+    const state={version:1,seed,difficulty:diffKey,rng:hashString(seed+'|run'),depth:1,turn:0,nextId:1,kills:0,gold:0,dead:false,won:false,cause:null,log:[],
+      player:{x:0,y:0,facing:1,hp:diff.startHp,maxHp:diff.startHp,baseAtk:4,baseDef:0,level:1,xp:0,potions:diff.startPotions,scrolls:0,weapon:0,armour:0}};
     generateFloor(state);
     state.log.push('You descend into the dark. Find the stairs down; the lich waits on floor '+FINAL_DEPTH+'.');
     return state;
@@ -253,6 +261,34 @@
     return JSON.parse(JSON.stringify(data));
   }
 
-  global.Delve={SIZE,FINAL_DEPTH,WALL,FLOOR,DOOR,OPEN,STAIRS,DIRS,MONSTERS,WEAPONS,ARMOURS,ITEM_GLYPHS,
-    newRun,act,score,restore,tileAt,passable,lineOfSight,distances,attackOf,defenceOf,hashString,index};
+  // Headless bot: fights adjacent monsters, heals when low, grabs nearby upgrades/potions, and descends to the lich.
+  function botAction(state){
+    const p=state.player;
+    const face=dir=>{if(dir===p.facing)return null;return(dir-p.facing+4)%4===1?'turnRight':'turnLeft';};
+    if(p.hp<p.maxHp*.5&&p.potions)return'potion';
+    for(let d=0;d<4;d++){const [dx,dy]=DIRS[d];if(state.monsters.some(m=>m.x===p.x+dx&&m.y===p.y+dy))return face(d)||'forward';}
+    if(p.scrolls>0)return'scroll';
+    // Check for nearby useful items (potions or better gear) within 4 steps
+    const fromPlayer=distances(state,p.x,p.y,true);
+    let target=null,bestItemDist=5;
+    for(const it of state.items){
+      const useful=it.kind==='potion'||(it.kind==='weapon'&&it.tier>p.weapon)||(it.kind==='armour'&&it.tier>p.armour);
+      if(!useful)continue;
+      const d=fromPlayer[index(it.x,it.y)];
+      if(d<bestItemDist){bestItemDist=d;target=[it.x,it.y];}
+    }
+    if(!target){
+      if(tileAt(state,p.x,p.y)===STAIRS)return'descend';
+      for(let i=0;i<state.tiles.length;i++)if(state.tiles[i]===STAIRS)target=[i%SIZE,Math.floor(i/SIZE)];
+      const lich=state.monsters.find(m=>m.kind==='lich');if(lich)target=[lich.x,lich.y];
+    }
+    if(!target)return'wait';
+    const field=distances(state,target[0],target[1],true);let best=null,bestScore=field[index(p.x,p.y)];
+    for(let d=0;d<4;d++){const [dx,dy]=DIRS[d],score=field[index(p.x+dx,p.y+dy)];if(score!==undefined&&score<bestScore){best=d;bestScore=score;}}
+    if(best===null)return'wait';
+    return face(best)||'forward';
+  }
+
+  global.Delve={SIZE,FINAL_DEPTH,WALL,FLOOR,DOOR,OPEN,STAIRS,DIRS,MONSTERS,DIFFICULTIES,WEAPONS,ARMOURS,ITEM_GLYPHS,
+    newRun,act,score,restore,botAction,tileAt,passable,lineOfSight,distances,attackOf,defenceOf,hashString,index};
 })(typeof window!=='undefined'?window:globalThis);
