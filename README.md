@@ -1,5 +1,7 @@
 # Glyph Arcade
 
+**[Play it here](https://taan1el.github.io/glyph-arcade/)**
+
 Small browser games drawn entirely in coloured letters. Every game builds into **one self-contained offline HTML file**: no installs, no network requests, and no external image or font files. All games share a two-pass WebGL2 character-cell engine in `engine/`.
 
 ![Delve: a skeleton, goblin and bat drawn as giant letters in a dungeon room](docs/delve-preview.png)

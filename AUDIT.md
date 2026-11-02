@@ -441,4 +441,4 @@ Phase A was finished before the first agent ran out of tokens, partway through P
 - **Phase C, mobile feel**: Done. Gamepad code has not been tested with a physical controller.
 - **Phase D, performance**: `PERF.md`. Only Wordfall meets the 22ms p95 target in software rendering. Delve and Inkfire miss it, and no real device has been measured.
 - **Phase E, third game**: Wordfall is complete.
-- **Phase F, release prep**: Done, except that the portal footer links to `github.com/Taan1el/glyph-arcade`, which does not exist until the repository is created.
+- **Phase F, release prep**: Done. The repository and site are live at https://taan1el.github.io/glyph-arcade/.
