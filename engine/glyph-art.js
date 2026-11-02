@@ -51,5 +51,18 @@
     }
   }
 
-  global.GlyphArt={SLOT,Canvas,Atlas,hex,glow};
+  // Picks the shading letter for one atlas texel. Scene shaders include this source.
+  const SHADER=`
+  uint atlasGlyph(uvec4 texel,int px,int py){
+    if(texel.a==200u)return ((px+py)&1)==0?42u:64u; // '*' or '@' for self-lit glow
+    float lum=(float(texel.r)*.299+float(texel.g)*.587+float(texel.b)*.114)/255.0;
+    if(lum<.12)return 58u; // ':' dark outline
+    if(lum<.28)return 61u; // '=' shadow
+    if(lum<.45)return 43u; // '+' mid-dark
+    if(lum<.62)return 37u; // '%' mid
+    if(lum<.78)return 35u; // '#' bright
+    return 77u;            // 'M' highlight
+  }`;
+
+  global.GlyphArt={SLOT,SHADER,Canvas,Atlas,hex,glow};
 })(typeof window!=='undefined'?window:globalThis);

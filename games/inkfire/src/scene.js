@@ -91,18 +91,7 @@
     return grit > 0.82 ? 44u : grit > 0.65 ? 58u : 46u;
   }
 
-  uint atlasGlyph(uvec4 texel, int px, int py) {
-    if (texel.a == 200u) {
-      return ((px + py) & 1) == 0 ? 42u : 64u; // '*' or '@' for self-lit glow
-    }
-    float lum = (float(texel.r) * 0.299 + float(texel.g) * 0.587 + float(texel.b) * 0.114) / 255.0;
-    if (lum < 0.12) return 58u;  // ':' dark outline
-    if (lum < 0.28) return 61u;  // '=' shadow
-    if (lum < 0.45) return 43u;  // '+' mid-dark
-    if (lum < 0.62) return 37u;  // '%' mid
-    if (lum < 0.78) return 35u;  // '#' bright
-    return 77u;                  // 'M' highlight
-  }
+  ${global.GlyphArt.SHADER}
 
   void main() {
     vec2 screen = (gl_FragCoord.xy * u_cellSize) / u_viewport * 2.0 - 1.0;
