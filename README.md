@@ -4,13 +4,13 @@
 
 Small browser games drawn entirely in coloured letters. Every game builds into **one self-contained offline HTML file**: no installs, no network requests, and no external image or font files. All games share a two-pass WebGL2 character-cell engine in `engine/`.
 
-![Delve: a skeleton, goblin and bat drawn as giant letters in a dungeon room](docs/delve-preview.png)
+![Delve: a skeleton, goblin and bat built from coloured letters in a dungeon room](docs/delve-preview.png)
 
 ## Games
 
 | Game | Genre & Overview |
 |---|---|
-| **Delve** | A first-person, turn-based roguelike across five seeded dungeon floors with permadeath, equipment upgrades, potions, mapping scrolls, and a lich on floor 5. Every monster and item is a giant 3D letter built out of small ones. |
+| **Delve** | A first-person, turn-based roguelike across five seeded dungeon floors with permadeath, equipment upgrades, potions, mapping scrolls, and a lich on floor 5. Every monster and item is a small drawn character, shaded in coloured letters. |
 | **Inkfire** | A fast-paced, real-time first-person arena shooter. Navigate a procedurally generated sector, collect Red and Blue keycards, wield four distinct weapons, detonate slime barrels, defeat the cybernetic Titan, and reach the exit pad. |
 | **Wordfall** | A two-minute lane game. Letters fall in nine lanes: catch the next letter of the word and dodge the rest. Finish words in a row to build a combo. |
 | [Next Stop](https://github.com/Taan1el/next-stop) | A rural steam railway in coloured letters ([play](https://taan1el.github.io/next-stop/)). Lives in its own repository. |

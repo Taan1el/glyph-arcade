@@ -2,6 +2,12 @@
 
 All notable changes to Glyph Arcade are documented in this file.
 
+## [Unreleased]
+
+### Changed
+- **Delve**: Monsters and items are now drawn characters with idle and attack poses (`games/delve/src/art.js`), shaded in coloured letters. Damage numbers, torches and the map still use single letters.
+- **Engine**: The atlas shading function moved to `GlyphArt.SHADER`, shared by Delve and Inkfire.
+
 ## [0.3.1] - 2026-11-02
 
 ### Fixed

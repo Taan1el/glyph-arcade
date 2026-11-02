@@ -69,6 +69,7 @@ Procedural pixel-art helper that packs small sprites into a single `RGBA8UI` tex
   - `.mirrorRows(from, to)`
   - `.finish({ outline = [.06, .05, .05], shade = true })`: Applies top-left highlight shading, bottom-right shadow shading, and a 1px dark outline around non-glowing pixels.
 - `GlyphArt.hex('#rrggbb')`: Converts a hex string into `[r, g, b]` floats in `0..1`.
+- `GlyphArt.SHADER`: GLSL source for `atlasGlyph(texel, px, py)`, which picks the shading letter for an atlas texel. Include it in a scene shader that samples an atlas.
 - `GlyphArt.glow(colour)`: Marks a colour as self-lit (stored with alpha `200` in the atlas).
 - `new GlyphArt.Atlas()`:
   - `.add(name, canvas)`: Registers a named sprite frame.
