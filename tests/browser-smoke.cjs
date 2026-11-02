@@ -23,7 +23,7 @@ const { pathToFileURL } = require('node:url');
       const skipLink = Boolean(document.querySelector('a.skip-link'));
       return { cards, overflow, manifest, skipLink };
     });
-    if (!portalInfo.cards.includes('delve.html') || !portalInfo.cards.includes('inkfire.html') || !portalInfo.cards.includes('wordfall.html')) {
+    if (!['delve', 'inkfire', 'wordfall', 'burrow'].every(game => portalInfo.cards.includes(game + '.html'))) {
       throw new Error('Portal is missing delve.html or inkfire.html card: ' + JSON.stringify(portalInfo.cards));
     }
     if (portalInfo.overflow) throw new Error('Portal overflows horizontally at 360px viewport width');
@@ -128,6 +128,52 @@ const { pathToFileURL } = require('node:url');
     if (wordfallOut.cells < 6) throw new Error('Wordfall scene drew too few distinct letters: ' + wordfallOut.cells);
     if (errors.length) throw new Error(errors.join('\n'));
     console.log('PASS Wordfall boots, moves and renders', JSON.stringify(wordfallOut));
+
+    // 5. Burrow smoke check
+    await page.goto(pathToFileURL(path.join(__dirname, '../dist/burrow.html')).href);
+    await page.waitForTimeout(800);
+    if (await page.evaluate(() => !document.getElementById('fatal').hidden)) {
+      throw new Error('Burrow fatal: ' + await page.textContent('#fatal p'));
+    }
+    await page.click('#new-run');
+    await page.waitForTimeout(400);
+    const burrowStart = await page.evaluate(() => window.burrow.state.player.x);
+    await page.keyboard.down('KeyD');
+    await page.waitForTimeout(500);
+    await page.keyboard.up('KeyD');
+    // Hold the mouse on the ground beside the player and dig.
+    const ground = await page.evaluate(() => {
+      const app = window.burrow, p = app.state.player, size = app.view.engine.cellSize;
+      const x = Math.floor(p.x + 2), y = Math.floor(p.y + p.h);
+      return { x: ((x + 0.5) * 3 - app.cam.x) * size[0], y: ((y + 0.5) * 2 - app.cam.y) * size[1] };
+    });
+    await page.mouse.move(ground.x, ground.y);
+    await page.mouse.down();
+    await page.waitForTimeout(900);
+    await page.mouse.up();
+    await page.keyboard.press('KeyC');
+    await page.waitForTimeout(100);
+    const crafting = await page.evaluate(() => window.burrow.mode === 'craft' && document.querySelectorAll('#recipes button').length > 3);
+    if (!crafting) throw new Error('Burrow crafting panel did not open');
+    await page.keyboard.press('KeyC');
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(100);
+    await page.click('#pause-title');
+    await page.waitForTimeout(100);
+    await page.click('#continue');
+    await page.waitForTimeout(200);
+    const burrowOut = await page.evaluate(() => ({
+      moved: window.burrow.state.player.x,
+      dirt: window.burrow.state.items.dirt || 0,
+      mode: window.burrow.mode,
+      cells: new Set(window.burrow.view.inspect().glyphs).size
+    }));
+    if (burrowOut.moved <= burrowStart) throw new Error('Burrow did not walk on KeyD');
+    if (!burrowOut.dirt) throw new Error('Burrow did not dig under the held mouse, or the save lost the dirt');
+    if (burrowOut.mode !== 'play') throw new Error('Burrow did not continue from its save');
+    if (burrowOut.cells < 6) throw new Error('Burrow scene drew too few distinct letters: ' + burrowOut.cells);
+    if (errors.length) throw new Error(errors.join('\n'));
+    console.log('PASS Burrow boots, walks, digs, crafts, saves and renders', JSON.stringify(burrowOut));
   } finally {
     await browser.close();
   }

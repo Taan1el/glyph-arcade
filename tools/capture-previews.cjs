@@ -104,6 +104,23 @@ const out = path.join(root, 'dist/previews');
     await page.screenshot({ path: path.join(out, 'wordfall.png') });
     console.log('Wrote dist/previews/wordfall.png');
 
+    // 4. Capture Burrow preview
+    await page.goto(pathToFileURL(path.join(root, 'dist/burrow.html')).href);
+    await page.waitForFunction(() => window.burrow);
+    await page.evaluate(() => {
+      const B = window.Burrow, app = window.burrow, state = B.newGame('preview-valley');
+      state.clock = 0.5;
+      state.flags.bench = true;
+      for (const [id, n] of [['wood', 12], ['stone', 30], ['copper', 9], ['iron', 4]]) B.give(state, id, n);
+      app.begin(state);
+      document.getElementById('toast').classList.remove('visible');
+    });
+    await page.waitForTimeout(500);
+    await page.evaluate(() => { window.burrow.mode = 'pause'; document.body.dataset.mode = 'pause'; });
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: path.join(out, 'burrow.png') });
+    console.log('Wrote dist/previews/burrow.png');
+
     // Rebuild launcher so dist/index.html embeds the newly generated preview images
     buildLauncher({ siteUrl: process.env.PAGES_URL || '' });
   } finally {

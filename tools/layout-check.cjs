@@ -8,7 +8,7 @@ const VIEWPORTS = [
   { name: 'portrait', width: 360, height: 640 },
   { name: 'landscape', width: 844, height: 390 }
 ];
-const REGIONS = ['.stats', '#minimap', '#log', '#touch .pad', '#touch .side'];
+const REGIONS = ['.stats', '#minimap', '#log', '#objective', '#hotbar', '#touch .pad', '#touch .side'];
 
 async function check(browser, game, viewport, problems) {
   const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: true });
@@ -30,7 +30,7 @@ async function check(browser, game, viewport, problems) {
       const node = document.querySelector(selector);
       if (node) { const r = node.getBoundingClientRect(); rects[selector] = { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; }
     }
-    const small = [...document.querySelectorAll('#touch button:not(.blank), #hud button')]
+    const small = [...document.querySelectorAll('#touch button:not(.blank), #hud button:not(.slot), #hud .slot:first-child')]
       .map(b => { const r = b.getBoundingClientRect(); return { label: b.textContent.trim().slice(0, 12), width: r.width, height: r.height }; })
       .filter(b => b.width && (b.width < 44 || b.height < 44));
     return { rects, small };
@@ -58,7 +58,7 @@ async function check(browser, game, viewport, problems) {
   const browser = await chromium.launch({ headless: true });
   const problems = [];
   try {
-    for (const game of ['delve', 'inkfire', 'wordfall']) for (const viewport of VIEWPORTS) await check(browser, game, viewport, problems);
+    for (const game of ['delve', 'inkfire', 'wordfall', 'burrow']) for (const viewport of VIEWPORTS) await check(browser, game, viewport, problems);
   } finally {
     await browser.close();
   }
