@@ -2,6 +2,12 @@
 
 All notable changes to Glyph Arcade are documented in this file.
 
+## [0.3.1] - 2026-11-02
+
+### Fixed
+- **Delve**: Starting a new run after dying no longer leaves most of the screen dissolved.
+- **Delve and Inkfire**: A new run starts with an empty combat log.
+
 ## [0.3.0] - 2026-11-02
 
 ### Added

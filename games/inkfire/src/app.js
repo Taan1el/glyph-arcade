@@ -454,6 +454,7 @@
       this.dissolve = 0;
       this.shake = 0;
       this.muzzleFlash = 0;
+      this.el.log.replaceChildren();
       this.view.updateMap(state);
       this.placeCamera(state);
       this.updateHud();

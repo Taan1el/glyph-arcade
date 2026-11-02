@@ -50,6 +50,25 @@ const { pathToFileURL } = require('node:url');
     if (delveOut.cells < 6) throw new Error('Delve scene drew too few distinct letters: ' + delveOut.cells);
     console.log('PASS Delve boots, plays turns and renders', JSON.stringify(delveOut));
 
+    // Dying and starting again must not carry the death effects into the new run.
+    await page.evaluate(() => {
+      const D = window.Delve, app = window.delve, s = app.state, p = s.player;
+      const open = D.DIRS.map(([dx, dy]) => [p.x + dx, p.y + dy]).find(([x, y]) => D.passable(D.tileAt(s, x, y)));
+      s.monsters.push({ id: s.nextId++, kind: 'ogre', x: open[0], y: open[1], hp: 99, maxHp: 99, atk: 99, def: 0, seen: null, cooldown: 0 });
+      p.hp = 1;
+      app.request('wait');
+    });
+    await page.waitForFunction(() => window.delve.mode === 'end', null, { timeout: 5000 });
+    await page.click('#end-again');
+    await page.waitForTimeout(300);
+    const restarted = await page.evaluate(() => {
+      const app = window.delve;
+      return { mode: app.mode, turn: app.state.turn, dissolve: app.dissolve, shake: app.shake, tint: app.tint[3], pitch: app.camera.pitch, log: app.el.log.children.length };
+    });
+    if (restarted.mode !== 'play' || restarted.turn !== 0) throw new Error('Delve did not restart: ' + JSON.stringify(restarted));
+    if (restarted.dissolve !== 0 || restarted.tint !== 0 || restarted.log !== 0) throw new Error('Delve death effects leaked into the new run: ' + JSON.stringify(restarted));
+    console.log('PASS Delve restarts cleanly after dying', JSON.stringify(restarted));
+
     // 3. Inkfire smoke check
     await page.goto(pathToFileURL(path.join(__dirname, '../dist/inkfire.html')).href);
     await page.waitForTimeout(800);
@@ -78,6 +97,12 @@ const { pathToFileURL } = require('node:url');
       cells: new Set(window.inkfire.view.inspect().glyphs).size
     }));
     if (inkfireOut.cells < 6) throw new Error('Inkfire scene drew too few distinct letters: ' + inkfireOut.cells);
+    const inkfireLog = await page.evaluate(() => {
+      window.inkfire.log('old line');
+      window.inkfire.newRun();
+      return window.inkfire.el.log.children.length;
+    });
+    if (inkfireLog !== 0) throw new Error('Inkfire log leaked into the new run');
     if (process.argv[2]) await page.screenshot({ path: process.argv[2] });
     console.log('PASS Inkfire boots, plays, pauses/mutes and renders', JSON.stringify(inkfireOut));
 

@@ -116,7 +116,7 @@
     }
     resume(){try{this.start(D.restore(JSON.parse(localStorage.getItem('delve-run'))));this.toast('Run resumed.');}catch(error){this.toast(error.message);try{localStorage.removeItem('delve-run');}catch{}this.refreshTitle();}}
     start(state){
-      this.state=state;this.queue=[];this.anim=[];this.particles=[];this.doors.clear();this.visuals.clear();this.tint=[0,0,0,0];
+      this.state=state;this.queue=[];this.anim=[];this.particles=[];this.doors.clear();this.visuals.clear();this.tint=[0,0,0,0];this.dissolve=0;this.shake=0;this.el.log.replaceChildren();
       this.syncVisuals(state,true);this.placeCamera(state);this.updateHud();this.show('play');this.sound.ensure();this.save();
     }
     placeCamera(state){const p=state.player;Object.assign(this.camera,{x:p.x+.5,z:p.y+.5,y:EYE,pitch:-.04,yaw:p.facing*Math.PI/2});}
