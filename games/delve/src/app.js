@@ -3,16 +3,16 @@
   'use strict';
   const D=global.Delve,EYE=1.05,MOVE_MS=150,TURN_MS=130;
   const LOOK={
-    rat:{size:.75,y:.375,colour:[.62,.48,.36]},bat:{size:.6,y:1.35,colour:[.62,.55,.72],float:true},
-    goblin:{size:1.1,y:.55,colour:[.42,.68,.32]},jelly:{size:.95,y:.48,colour:[.55,.9,.4]},
-    skeleton:{size:1.5,y:.75,colour:[.9,.88,.8]},archer:{size:1.4,y:.7,colour:[.92,.84,.6]},
-    wraith:{size:1.6,y:1.0,colour:[.62,.86,.95],float:true},ogre:{size:2.0,y:1.0,colour:[.78,.52,.3]},
-    lich:{size:2.1,y:1.05,colour:[.78,.6,1.0],float:true}
+    rat:{size:.5,y:.25},bat:{size:.6,y:1.35,float:true},
+    goblin:{size:1.15,y:.58},jelly:{size:.8,y:.4},
+    skeleton:{size:1.6,y:.8},archer:{size:1.6,y:.8},
+    wraith:{size:1.7,y:1.0,float:true},ogre:{size:2.0,y:1.0},
+    lich:{size:2.1,y:1.1,float:true}
   };
-  const ITEM_COLOURS={gold:[1,.82,.3],potion:[1,.32,.3],scroll:[.92,.86,.66],weapon:[.82,.86,.92],armour:[.6,.72,.95]};
   const HOLD=new Set(['forward','back','left','right','wait']);
   const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
   const lerp=(a,b,t)=>a+(b-a)*t;
+  const ATTACK_MS=260;
   const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 
   class Sound {
@@ -55,6 +55,7 @@
     constructor(){
       this.canvas=document.getElementById('view');this.view=new DelveView(this.canvas);this.sound=new Sound();
       this.el=Object.fromEntries(['title','help','end','hud','log','minimap','touch','end-title','end-detail','end-score','continue','depth','hp','hp-bar','level','attack','defence','gold','potions','scrolls','toast','mute'].map(id=>[id,document.getElementById(id)]));
+      this.monsterFrames=Object.fromEntries(Object.keys(LOOK).map(kind=>[kind,['idle0','idle1','attack'].map(frame=>this.view.frameIndex(kind+'.'+frame))]));
       this.state=null;this.mode='title';this.queue=[];this.anim=[];this.visuals=new Map();this.particles=[];this.doors=new Map();
       this.pad=new global.GlyphPad();this.quality=new global.GlyphQuality(()=>this.resize());this.padNext=0;this.touchAction=null;this.touchNext=0;this.camera={x:0,y:EYE,z:0,yaw:0,pitch:-.04};this._renderCamera={x:0,y:EYE,z:0,yaw:0,pitch:-.04};
       this.tint=[0,0,0,0];this.dissolve=0;this.shake=0;this.time=0;this.last=performance.now();
@@ -141,9 +142,9 @@
           case'door':{const i=D.index(e.x,e.y);this.doors.set(i,0);this.anim.push({start:now,duration:380,update:t=>this.doors.set(i,ease(t)),done:()=>{this.doors.delete(i);if(this.state)this.view.setMap(D.SIZE,this.state.tiles,this.doors);}});this.sound.play('door');break;}
           case'attack':
             if(e.actor==='player'){const [dx,dy]=D.DIRS[before.facing];this.nudge(dx,dy,.28,170);const v=this.visuals.get(e.target);if(v){v.flash=1;this.number(v.x,v.y+v.size*.6,v.z,e.damage,e.crit?[1,.85,.3]:[1,1,1]);}this.sound.play(e.crit?'crit':'hit');}
-            else{const v=this.visuals.get(e.actor);if(v)this.lunge(v,this.camera.x,this.camera.z);this.sound.play('swing');}
+            else{const v=this.visuals.get(e.actor);if(v){v.attackUntil=now+ATTACK_MS;this.lunge(v,this.camera.x,this.camera.z);}this.sound.play('swing');}
             break;
-          case'shoot':{const v=this.visuals.get(e.actor);const boss=this.state.monsters.find(m=>m.id===e.actor)?.kind==='lich';if(v)this.projectile(v.x,v.z,this.camera.x,this.camera.z,boss);this.sound.play('shoot');break;}
+          case'shoot':{const v=this.visuals.get(e.actor);const boss=this.state.monsters.find(m=>m.id===e.actor)?.kind==='lich';if(v)v.attackUntil=now+ATTACK_MS;if(v)this.projectile(v.x,v.z,this.camera.x,this.camera.z,boss);this.sound.play('shoot');break;}
           case'hurt':this.flash([.75,.05,.04],.42,320);this.shake=1;this.sound.play('hurt');break;
           case'heal':this.flash([.2,.9,.4],.25,350);this.sound.play('drink');break;
           case'map':this.flash([.9,.85,.5],.25,400);this.sound.play('item');break;
@@ -177,12 +178,12 @@
 
     visualFor(m){
       let v=this.visuals.get(m.id);if(v)return v;const look=LOOK[m.kind];
-      v={id:m.id,kind:'monster',x:m.x+.5,z:m.y+.5,y:look.y,baseY:look.y,size:look.size,glyph:D.MONSTERS[m.kind].glyph,colour:look.colour,material:10,flash:0,dissolve:0,float:look.float,phase:m.id*1.7};
+      v={id:m.id,kind:'monster',x:m.x+.5,z:m.y+.5,y:look.y,baseY:look.y,size:look.size,frames:this.monsterFrames[m.kind],frame:this.monsterFrames[m.kind][0],attackUntil:0,material:10,flash:0,dissolve:0,float:look.float,phase:m.id*1.7};
       this.visuals.set(m.id,v);return v;
     }
     syncVisuals(state,reset){
       for(const m of state.monsters){const v=this.visualFor(m);if(reset){v.x=m.x+.5;v.z=m.y+.5;}}
-      for(const item of state.items)if(!this.visuals.has(item.id))this.visuals.set(item.id,{id:item.id,kind:'item',x:item.x+.5,z:item.y+.5,y:.32,baseY:.32,size:.46,glyph:D.ITEM_GLYPHS[item.kind],colour:ITEM_COLOURS[item.kind],material:12,flash:0,dissolve:0,phase:item.id*.9});
+      for(const item of state.items)if(!this.visuals.has(item.id))this.visuals.set(item.id,{id:item.id,kind:'item',x:item.x+.5,z:item.y+.5,y:.34,baseY:.34,size:.5,frame:this.view.frameIndex('item.'+item.kind),material:12,flash:0,dissolve:0,phase:item.id*.9});
       if(reset){
         const map=this.state===state||state===this.demo?state:this.state;
         this.view.setMap(D.SIZE,map.tiles,this.doors);
@@ -246,6 +247,7 @@
       const sprites=this._sprites;sprites.length=0;
       for(const v of this.visuals.values()){
         v.flash=Math.max(0,(v.flash||0)-dt*5);
+        if(v.frames)v.frame=v.frames[this.time<v.attackUntil?2:this.reducedMotion?0:Math.floor(this.time/420+v.phase)%2];
         if(!v.dying&&v.kind==='monster'&&!this.anim.some(a=>a.target===v&&a.key==='y'))v.y=v.baseY+(v.float?Math.sin(this.time/400+v.phase)*.12:Math.abs(Math.sin(this.time/260+v.phase))*.03);
         if(v.kind==='item'&&!v.dying)v.y=v.baseY+Math.sin(this.time/330+v.phase)*.06;
         sprites.push(v);

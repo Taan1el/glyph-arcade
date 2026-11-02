@@ -1,12 +1,13 @@
 /* Delve view: a grid raycaster that writes character cells. Walls are brick
- * letters, monsters and items are giant letters built from small ones. */
+ * letters, monsters and items are drawn sprites, and effects are single letters. */
 (function (global) {
   'use strict';
-  const MAX_SPRITES = 48, MAX_TORCHES = 12, WALL_HEIGHT = 2.2;
+  const MAX_SPRITES = 48, MAX_TORCHES = 12, WALL_HEIGHT = 2.2, SLOT = global.GlyphArt.SLOT;
 
   const SCENE = `
   const float H=${WALL_HEIGHT.toFixed(2)};
   uniform usampler2D u_map;
+  uniform usampler2D u_atlas;
   uniform int u_size;
   uniform vec3 u_eye;
   uniform vec3 u_forward;
@@ -23,6 +24,7 @@
   uniform vec3 u_floorColour;
   uniform vec3 u_fogColour;
 
+  ${global.GlyphArt.SHADER}
   uvec4 tile(ivec2 c){if(c.x<0||c.y<0||c.x>=u_size||c.y>=u_size)return uvec4(0u);return texelFetch(u_map,c,0);}
 
   vec3 light(vec3 p,vec3 n,vec3 base){
@@ -102,7 +104,7 @@
       vec3 lit=light(p,n,base*shade);
       fg=lit*1.3+vec3(.012);bg=lit*.3;
     }
-    // Giant-letter sprites: camera-facing billboards masked by their own glyph.
+    // Camera-facing billboards. Negative ids are atlas frames, positive ids are single letters.
     vec3 normal=-normalize(vec3(u_forward.x,0,u_forward.z));vec3 across=normalize(vec3(u_right.x,0,u_right.z));
     float tSprite=tHit;
     for(int i=0;i<${MAX_SPRITES};i++){
@@ -110,20 +112,31 @@
       vec4 s=u_spritePos[i],info=u_spriteInfo[i];
       float denom=dot(rd,normal);if(abs(denom)<1e-4)continue;
       float t=dot(s.xyz-u_eye,normal)/denom;if(t<.2||t>=tSprite)continue;
-      vec3 p=u_eye+rd*t;float halfW=s.w*.36,halfH=s.w*.5;
-      float u=dot(p-s.xyz,across)/halfW,v=(p.y-s.y)/halfH;
-      if(abs(u)>1.0||abs(v)>1.0)continue;
-      int column=int(floor((u*.5+.5)*5.0)),row=int(floor((1.0-(v*.5+.5))*7.0));
-      if(!glyphBit(uint(info.x),column,row))continue;
+      vec3 p=u_eye+rd*t;vec3 base;uint letter;uint spriteFlags;bool selfLit=info.y>=20.0;
+      if(info.x<0.0){
+        // spriteColour.x carries the world size of one atlas slot; art sits on the sprite's bottom edge.
+        float slot=u_spriteColour[i].x;
+        float u=dot(p-s.xyz,across)/slot+.5,v=(p.y-(s.y-s.w*.5))/slot;
+        if(u<0.0||u>=1.0||v<0.0||v>=1.0)continue;
+        int frame=int(-info.x)-1;
+        int px=clamp(int(floor(u*${SLOT}.0)),0,${SLOT-1}),py=clamp(int(floor(v*${SLOT}.0)),0,${SLOT-1});
+        uvec4 texel=texelFetch(u_atlas,ivec2((frame&15)*${SLOT}+px,(frame>>4)*${SLOT}+py),0);
+        if(texel.a==0u)continue;
+        selfLit=selfLit||texel.a==200u;base=vec3(texel.rgb)/255.0;letter=atlasGlyph(texel,px,py);spriteFlags=selfLit?3u:0u;
+      }else{
+        float halfW=s.w*.36,halfH=s.w*.5;
+        float u=dot(p-s.xyz,across)/halfW,v=(p.y-s.y)/halfH;
+        if(abs(u)>1.0||abs(v)>1.0)continue;
+        int column=int(floor((u*.5+.5)*5.0)),row=int(floor((1.0-(v*.5+.5))*7.0));
+        if(!glyphBit(uint(info.x),column,row))continue;
+        base=u_spriteColour[i]*(.85+.25*(v*.5+.5));letter=uint(info.x);spriteFlags=selfLit?3u:1u; // thin letter strokes would ink solid
+      }
       if(info.w>0.0&&hash21(floor(gl_FragCoord.xy)+float(i))<info.w)continue; // dissolving
       tSprite=t;
-      bool selfLit=info.y>=20.0;
-      vec3 base=u_spriteColour[i]*(.85+.25*(v*.5+.5));
-      vec3 lit=selfLit?base:light(p,normal,base)*1.6+base*.12;
+      vec3 lit=selfLit?base*1.2:light(p,normal,base)*1.6+base*.14;
       lit=mix(lit,vec3(1.0,.95,.9),clamp(info.z,0.0,1.0));
       fg=lit*1.25+vec3(.02);bg=lit*.38;
-      // Each giant letter is drawn in its own small letter.
-      glyph=uint(info.x);material=uint(info.y);flags=selfLit?3u:1u; // thin letter strokes would ink solid
+      glyph=letter;material=uint(info.y);flags=spriteFlags;
       tHit=t;
     }
     float fog=1.0-exp(-tHit*.055);
@@ -142,13 +155,17 @@
 
   class DelveView {
     constructor(canvas){
-      this.engine=new GlyphEngine(canvas,{sceneSource:SCENE,far:40,uniforms:['map','size','eye','forward','right','up','lantern','torches','torchCount','spritePos','spriteInfo','spriteColour','spriteCount','wallColour','floorColour','fogColour']});
+      this.atlas=global.DelveArt.build();
+      this.heights=this.atlas.frames.map(frame=>frame.canvas.height);
+      this.engine=new GlyphEngine(canvas,{sceneSource:SCENE,far:40,uniforms:['map','atlas','size','eye','forward','right','up','lantern','torches','torchCount','spritePos','spriteInfo','spriteColour','spriteCount','wallColour','floorColour','fogColour']});
+      const packed=this.atlas.pack();this.engine.setTexture('atlas',5,packed.width,packed.height,packed.data);
       this.mapData=null;this.spritePos=new Float32Array(MAX_SPRITES*4);this.spriteInfo=new Float32Array(MAX_SPRITES*4);this.spriteColour=new Float32Array(MAX_SPRITES*3);this.torchData=new Float32Array(MAX_TORCHES*4);
       this.eye=new Float32Array(3);this.forward=new Float32Array(3);this.right=new Float32Array(3);this.up=new Float32Array(3);
       this._nearTorches=[];this._visibleSprites=[];this._activePalette=PALETTES[0];this._lantern=0.95;this._torchCount=0;this._spriteCount=0;
       this._uniformBinder=this._bindUniforms.bind(this);
     }
     resize(width,height,cellSize){this.engine.resize(width,height,cellSize);}
+    frameIndex(name){return this.atlas.index(name);}
     // tiles: Delve tile ids; doors: Map(index -> open 0..1)
     setMap(size,tiles,doors){
       if(!this.mapData||this.mapData.length!==size*size*4)this.mapData=new Uint8Array(size*size*4);
@@ -161,7 +178,7 @@
     }
     _bindUniforms(gl,u){
       const eye=this.eye,forward=this.forward,palette=this._activePalette;
-      gl.uniform1i(u.map,4);gl.uniform1i(u.size,this.size);gl.uniform3fv(u.eye,eye);gl.uniform3fv(u.forward,forward);gl.uniform3fv(u.right,this.right);gl.uniform3fv(u.up,this.up);
+      gl.uniform1i(u.map,4);gl.uniform1i(u.atlas,5);gl.uniform1i(u.size,this.size);gl.uniform3fv(u.eye,eye);gl.uniform3fv(u.forward,forward);gl.uniform3fv(u.right,this.right);gl.uniform3fv(u.up,this.up);
       gl.uniform4f(u.lantern,eye[0]+forward[0]*.2,eye[1]+.15,eye[2]+forward[2]*.2,this._lantern);
       gl.uniform4fv(u.torches,this.torchData);gl.uniform1i(u.torchCount,this._torchCount);
       gl.uniform4fv(u.spritePos,this.spritePos);gl.uniform4fv(u.spriteInfo,this.spriteInfo);gl.uniform3fv(u.spriteColour,this.spriteColour);gl.uniform1i(u.spriteCount,this._spriteCount);
@@ -190,10 +207,11 @@
       visible.sort((a,b)=>a._dist-b._dist);
       const sCount=Math.min(MAX_SPRITES,visible.length);this._spriteCount=sCount;
       for(let i=0;i<sCount;i++){
-        const s=visible[i],i4=i*4,i3=i*3,c=s.colour;
+        const s=visible[i],i4=i*4,i3=i*3,art=s.frame!==undefined;
         this.spritePos[i4]=s.x;this.spritePos[i4+1]=s.y;this.spritePos[i4+2]=s.z;this.spritePos[i4+3]=s.size;
-        this.spriteInfo[i4]=s.glyph.charCodeAt(0);this.spriteInfo[i4+1]=s.material;this.spriteInfo[i4+2]=s.flash||0;this.spriteInfo[i4+3]=s.dissolve||0;
-        this.spriteColour[i3]=c[0];this.spriteColour[i3+1]=c[1];this.spriteColour[i3+2]=c[2];
+        this.spriteInfo[i4]=art?-(s.frame+1):s.glyph.charCodeAt(0);this.spriteInfo[i4+1]=s.material;this.spriteInfo[i4+2]=s.flash||0;this.spriteInfo[i4+3]=s.dissolve||0;
+        if(art){this.spriteColour[i3]=s.size*SLOT/this.heights[s.frame];}
+        else{const c=s.colour;this.spriteColour[i3]=c[0];this.spriteColour[i3+1]=c[1];this.spriteColour[i3+2]=c[2];}
       }
       this.engine.render(this._uniformBinder,{time,ink,tint,dissolve});
     }

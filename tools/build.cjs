@@ -3,8 +3,8 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..');
 const GAMES=[
-  {id:'delve',title:'Delve',tagline:'A first-person roguelike where every monster is a giant letter.',
-   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/delve/src/rules.js','games/delve/src/scene.js','games/delve/src/app.js'],shell:'games/delve/src/shell.html'},
+  {id:'delve',title:'Delve',tagline:'A first-person roguelike with five floors, one lich, and no second chances.',
+   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','games/delve/src/art.js','games/delve/src/rules.js','games/delve/src/scene.js','games/delve/src/app.js'],shell:'games/delve/src/shell.html'},
   {id:'inkfire',title:'Inkfire',tagline:'A fast-paced first-person arena shooter with procedural glyph sprites.',
    parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','games/inkfire/src/art.js','games/inkfire/src/rules.js','games/inkfire/src/scene.js','games/inkfire/src/app.js'],shell:'games/inkfire/src/shell.html'},
   {id:'wordfall',title:'Wordfall',tagline:'Two minutes of falling letters. Catch the next one and dodge the rest.',
