@@ -2,6 +2,19 @@
 
 All notable changes to Glyph Arcade are documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Burrow (`games/burrow/`)**: A side-view digging and building game on the shared engine, with rules, scene, app, shell, 20 rule checks, a plain-input bot that plays from the first tree to the final boss, a preview image and a smoke test.
+  - Seeded 320×150 worlds with surface groves, caves, copper, iron and crystal, water, lava, and an obsidian altar chamber under the spawn.
+  - Tiered picks, swords and armour, workbench crafting, doors, ladders and torches, and an objective line that always names the next step.
+  - Flood-filled block and sky light, a day and night cycle, night creatures, flowing liquids that turn to obsidian when they meet, and falling sand.
+  - The Maw, a segmented serpent boss that charges, bites and swims clear.
+  - Keyboard and mouse, touch, and gamepad controls, three difficulties, and an automatic world save.
+
+### Changed
+- **Tooling**: `tools/layout-check.cjs` also covers objective bars and hotbars.
+
 ## [0.4.0] - 2026-11-02
 
 ### Changed

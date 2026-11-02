@@ -13,6 +13,7 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | **Delve** | A first-person, turn-based roguelike across five seeded dungeon floors with permadeath, equipment upgrades, potions, mapping scrolls, and a lich on floor 5. Every monster and item is a small drawn character, shaded in coloured letters. |
 | **Inkfire** | A fast-paced, real-time first-person arena shooter. Navigate a procedurally generated sector, collect Red and Blue keycards, wield four distinct weapons, detonate slime barrels, defeat the cybernetic Titan, and reach the exit pad. |
 | **Wordfall** | A two-minute lane game. Letters fall in nine lanes: catch the next letter of the word and dodge the rest. Finish words in a row to build a combo. |
+| **Burrow** | A side-view digging and building game. Fell trees, mine copper, iron and crystal, survive the night, and forge the key that wakes The Maw at the bottom of the world. Flood-filled light, flowing water and lava, falling sand, and a world that saves itself. |
 | [Next Stop](https://github.com/Taan1el/next-stop) | A rural steam railway in coloured letters ([play](https://taan1el.github.io/next-stop/)). Lives in its own repository. |
 
 ## How to Play
@@ -47,9 +48,20 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | `←` / `→`, `A` / `D` | Slide one lane. Hold to keep sliding. |
 | `P` / `Esc` | Pause. |
 
+### Burrow Controls
+
+| Key / Input | Action |
+|---|---|
+| `A` / `D`, `←` / `→` | Walk. One-tile ledges step up on their own. |
+| `Space` / `W` / `↑` | Jump, swim up, or climb a ladder. `S` / `↓` climbs down. |
+| Hold left click | Use the selected item: dig, place blocks, eat, open doors. |
+| Right click / `F` | Swing your sword, whatever you are holding. |
+| `1` to `9`, mouse wheel | Choose an item. |
+| `C` · `P` / `Esc` | Open crafting · pause. |
+
 ### Touch, gamepad and difficulty
 
-Every game has two-thumb touch controls, standard-mapping gamepad support (listed on each game's help screen; controls cannot be remapped yet), a mute toggle, and Easy, Normal and Hard on the title screen. High scores persist in `localStorage`, and Delve and Inkfire also save the active run.
+Every game has two-thumb touch controls, standard-mapping gamepad support (listed on each game's help screen; controls cannot be remapped yet), a mute toggle, and Easy, Normal and Hard on the title screen. High scores persist in `localStorage`, and Delve, Inkfire and Burrow also save the active run.
 
 ## How to Run, Build, and Test
 
