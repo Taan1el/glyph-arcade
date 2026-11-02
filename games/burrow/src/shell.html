@@ -1,0 +1,165 @@
+<!doctype html>
+<!--__LICENSE__-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Burrow · Dig down in letters</title>
+<!--__META__-->
+<style>
+:root{--ink:#eadfc6;--muted:#a79a7c;--gold:#f0b84a;--panel:#141009e6;--line:#5e4a30;font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#06070a;--safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px)}
+html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;overflow:hidden;background:#06070a}
+body.touch{touch-action:none}
+[hidden]{display:none!important}
+#view{display:block;width:100vw;height:100vh;height:100dvh;touch-action:none;cursor:crosshair}
+button{font:inherit;cursor:pointer;background:#2a2014;color:var(--ink);border:1px solid #80683f;padding:10px 16px;border-radius:2px}
+button:hover:not(:disabled),button:focus-visible{background:#3e2f1c;outline:2px solid var(--gold);outline-offset:1px}
+button:disabled{cursor:default;opacity:.78}
+button.primary{background:var(--gold);color:#1f1608;border-color:#ffdc95;font-weight:bold}
+button.small{padding:4px 9px;font-size:12px}
+.card{touch-action:pan-y;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(540px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #2a2014;padding:30px 32px;box-shadow:0 18px 60px #000c;-webkit-user-select:text;user-select:text}
+.card h1{font:bold 54px "Courier New",monospace;letter-spacing:.2em;margin:0 0 6px;color:var(--gold);text-shadow:0 0 18px #f0b84a55}
+.card h2{font-weight:normal;font-size:26px;margin:0 0 12px;color:var(--gold)}
+.card p{line-height:1.5;color:#d6caae}
+.eyebrow{font:11px "Courier New",monospace;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.note{font-size:13px;color:var(--muted)}
+.note a{color:var(--gold)}
+select{font:inherit;background:#2a2014;color:var(--ink);border:1px solid var(--line);padding:8px 10px;min-height:44px;margin-left:6px}
+select:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+dl.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:12px 0}
+dl.keys dt{font:13px "Courier New",monospace;color:var(--gold);white-space:nowrap}
+dl.keys dd{margin:0;color:#d6caae}
+#hud{position:absolute;inset:0;pointer-events:none;font:12px "Courier New",monospace}
+.stats{position:absolute;left:calc(12px + var(--safe-l));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);padding:8px 10px;width:230px;box-sizing:border-box;display:grid;gap:3px;pointer-events:auto}
+.hpline{display:flex;align-items:center;gap:8px}
+.bar{flex:1;height:9px;background:#3a1512;border:1px solid #6b2a22}
+#hp-bar{display:block;height:100%;background:#d0442f;transition:width .15s}
+#hp-bar.low{background:#ff5a3a;animation:pulse .7s infinite alternate}
+@keyframes pulse{to{opacity:.45}}
+.tools{display:flex;gap:6px;margin-top:4px}
+#objective{position:absolute;left:50%;top:calc(10px + var(--safe-t));transform:translateX(-50%);width:min(440px,calc(100vw - 520px));min-width:200px;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);padding:7px 11px;text-align:center;font:13px Georgia,serif;color:#f2e7cc}
+#boss{position:absolute;left:50%;top:calc(58px + var(--safe-t));transform:translateX(-50%);width:min(420px,70vw);text-align:center;color:#ffb0a0;font:bold 12px "Courier New",monospace;letter-spacing:.2em}
+#boss .bar{height:11px;margin-top:3px}
+#boss-bar{display:block;height:100%;background:#e0402c}
+#hotbar{position:absolute;left:50%;bottom:calc(12px + var(--safe-b));transform:translateX(-50%);display:flex;gap:4px;max-width:calc(100vw - 24px);overflow-x:auto;pointer-events:auto;scrollbar-width:none;padding:2px}
+.slot{position:relative;flex:none;width:46px;height:46px;padding:0;background:#1a140ce0;border:1px solid var(--line);font:18px "Courier New",monospace;display:grid;place-items:center}
+.slot.selected{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold);background:#3a2c17}
+.slot i{position:absolute;left:3px;top:1px;font:9px "Courier New",monospace;color:var(--muted);font-style:normal}
+.slot small{position:absolute;right:3px;bottom:1px;font:10px "Courier New",monospace;color:#f2e7cc}
+.slot b{font-weight:bold}
+#toast{position:absolute;left:50%;bottom:calc(74px + var(--safe-b));transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:8px 14px;font:13px "Courier New",monospace;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
+#toast.visible{opacity:1}
+#craft{width:min(620px,calc(100vw - 32px))}
+#recipes{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;margin:12px 0;max-height:52dvh;overflow:auto}
+.recipe{display:grid;gap:2px;text-align:left;padding:8px 10px}
+.recipe strong{font-weight:normal;font-size:15px}
+.recipe small{font:11px "Courier New",monospace;color:#b9ac8e;line-height:1.35}
+.recipe.ready{border-color:var(--gold);background:#3a2c17}
+.recipe.ready small{color:#e9d9a8}
+#touch{position:absolute;left:0;right:0;bottom:0;height:0}
+#touch .pad,#touch .side{position:absolute;bottom:calc(68px + var(--safe-b));display:grid;gap:6px}
+#touch .pad{left:calc(10px + var(--safe-l));grid-template-columns:repeat(3,56px)}
+#touch .side{right:calc(10px + var(--safe-r));grid-template-columns:repeat(2,64px)}
+#touch button{height:52px;padding:0;font:18px "Courier New",monospace;background:#1a140cc4;touch-action:none;user-select:none;-webkit-user-select:none}
+#touch .blank{visibility:hidden}
+#touch small{display:block;font-size:9px;color:var(--muted)}
+body.touch button.small{min-height:44px;min-width:44px}
+body.touch #toast{bottom:calc(196px + var(--safe-b))}
+body:not([data-mode=play]) #touch{display:none}
+#fatal{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#06070a;color:var(--ink);padding:24px}
+@media(max-width:900px){#objective{left:calc(250px + var(--safe-l));right:calc(10px + var(--safe-r));width:auto;min-width:0;transform:none;font-size:12px;padding:5px 8px}}
+@media(max-width:560px){.stats{width:calc(100vw - 20px);left:10px;right:10px}#objective{left:10px;right:10px;top:calc(var(--stats-bottom,150px) + 6px)}#boss{top:calc(var(--stats-bottom,150px) + 48px)}.card{padding:22px}.card h1{font-size:38px}#touch .pad{grid-template-columns:repeat(3,50px)}#touch .side{grid-template-columns:repeat(2,56px)}}
+@media(max-height:460px){body.touch #toast{top:calc(52px + var(--safe-t));bottom:auto;left:calc(240px + var(--safe-l));right:calc(10px + var(--safe-r));transform:none;max-width:none}.stats{width:210px;padding:5px 8px}#hud .tools{margin-top:2px}#touch .pad,#touch .side{bottom:calc(10px + var(--safe-b))}#hotbar{left:calc(50% + 0px);max-width:calc(100vw - 370px);bottom:calc(8px + var(--safe-b))}.slot{width:44px;height:44px}}
+@media(prefers-reduced-motion:reduce){#hp-bar.low{animation:none}}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="view" aria-label="A side view of a world of soil, rock and caves, drawn in coloured letters"></canvas>
+<section id="hud" hidden aria-label="Explorer status">
+  <div class="stats">
+    <div class="hpline"><span>HP</span><div class="bar"><i id="hp-bar"></i></div><b id="hp"></b></div>
+    <div><span id="depth"></span> · <span id="clock"></span></div>
+    <div id="gear"></div>
+    <div class="tools">
+      <button id="craft-btn" class="small" type="button">Craft (C)</button>
+      <button id="mute" class="small" type="button">Sound on</button>
+      <button id="pause-btn" class="small" type="button">Pause</button>
+    </div>
+  </div>
+  <div id="objective" role="status"></div>
+  <div id="boss" hidden>THE MAW<div class="bar"><i id="boss-bar"></i></div></div>
+  <div id="hotbar" aria-label="Carried items"></div>
+</section>
+<div id="toast" role="status"></div>
+<nav id="touch" hidden aria-label="Touch controls">
+  <div class="pad">
+    <button class="blank" aria-hidden="true" tabindex="-1"></button><button data-hold="up" aria-label="Jump or climb">&#9650;</button><button class="blank" aria-hidden="true" tabindex="-1"></button>
+    <button data-hold="left" aria-label="Move left">&#9664;</button><button data-hold="down" aria-label="Climb down">&#9660;</button><button data-hold="right" aria-label="Move right">&#9654;</button>
+  </div>
+  <div class="side">
+    <button data-hold="attack">/<small>attack</small></button>
+    <button data-hold="up">^<small>jump</small></button>
+  </div>
+</nav>
+<section id="title" class="card" aria-labelledby="title-heading">
+  <div class="eyebrow">Glyph Arcade · dig down in letters</div>
+  <h1 id="title-heading">BURROW</h1>
+  <p>Fell trees, dig for copper, iron and crystal, and light your way down through the dark. Build a shelter before night falls. At the bottom of the world, under an obsidian shell, something enormous is sleeping.</p>
+  <div class="row">
+    <button id="new-run" class="primary" type="button">New world</button>
+    <button id="continue" type="button" hidden>Continue</button>
+    <button id="how-to" type="button">How to play</button>
+  </div>
+  <label class="note">Difficulty<select id="difficulty"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
+  <p id="best" class="note"></p>
+  <p class="note">Your world saves itself. <a href="index.html">More games in the arcade</a></p>
+</section>
+<section id="pause" class="card" hidden aria-labelledby="pause-heading">
+  <div class="eyebrow">Paused</div>
+  <h2 id="pause-heading">The world waits</h2>
+  <div class="row">
+    <button id="resume-btn" class="primary" type="button">Resume</button>
+    <button id="pause-help" type="button">Controls</button>
+    <button id="pause-title" type="button">Save and quit</button>
+  </div>
+</section>
+<section id="craft" class="card" hidden aria-labelledby="craft-heading">
+  <div class="eyebrow">Your pack</div>
+  <h2 id="craft-heading">Crafting</h2>
+  <div id="recipes"></div>
+  <div class="row"><button id="craft-close" class="primary" type="button">Back (C)</button></div>
+</section>
+<section id="help" class="card" hidden aria-labelledby="help-heading">
+  <div class="eyebrow">Field notes</div>
+  <h2 id="help-heading">How to dig</h2>
+  <dl class="keys">
+    <dt>A / D · ← →</dt><dd>Walk. One-tile ledges step up on their own.</dd>
+    <dt>Space / W / ↑</dt><dd>Jump, swim up, or climb ladders. S / ↓ climbs down.</dd>
+    <dt>Hold click</dt><dd>Use the selected item on the tile under the cursor: dig with the Pick, place blocks, eat food, open doors.</dd>
+    <dt>Right click / F</dt><dd>Swing your sword. It works whatever you are holding.</dd>
+    <dt>1 to 9 · wheel</dt><dd>Choose an item.</dd>
+    <dt>C</dt><dd>Open crafting. Most recipes need a workbench close by.</dd>
+    <dt>P / Esc</dt><dd>Pause.</dd>
+    <dt>Touch</dt><dd>Tap the world to use the selected item; pads move, jump and attack.</dd>
+    <dt>Gamepad</dt><dd>Left stick moves, A jumps, right stick aims, RT uses, RB attacks, Y crafts, d-pad changes item, Start pauses. Controls are fixed for now.</dd>
+  </dl>
+  <p>Stone and ore need a good enough Pick. Falling hurts, lava kills, and the dark is full of things. Torches keep you safe to see. Water and lava flow, and when they meet they leave obsidian.</p>
+  <div class="row"><button id="help-back" class="primary" type="button">Back</button></div>
+</section>
+<section id="end" class="card" hidden aria-labelledby="end-title">
+  <div class="eyebrow">World complete</div>
+  <h2 id="end-title"></h2>
+  <p id="end-detail"></p>
+  <p id="end-score" class="note"></p>
+  <div class="row">
+    <button id="end-again" class="primary" type="button">New world</button>
+    <button id="end-menu" type="button">Title</button>
+  </div>
+</section>
+<div id="fatal" hidden><h2>Burrow could not start</h2><p></p></div>
+<script>/*__CODE__*/</script>
+</body>
+</html>
