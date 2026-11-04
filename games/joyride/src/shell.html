@@ -1,0 +1,187 @@
+<!doctype html>
+<!--__LICENSE__-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Joyride · Open-world driving in letters</title>
+<!--__META__-->
+<style>
+:root{--ink:#ede3cc;--muted:#a4987c;--gold:#f2bd42;--panel:#121318eb;--line:#554c38;font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#06070a;--safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px)}
+html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;overflow:hidden;background:#06070a}
+body.touch{touch-action:none}
+[hidden]{display:none!important}
+#view{display:block;width:100vw;height:100vh;height:100dvh;touch-action:none}
+button{font:inherit;cursor:pointer;background:#242118;color:var(--ink);border:1px solid #7c6840;padding:10px 16px;border-radius:2px}
+button:hover:not(:disabled),button:focus-visible{background:#383120;outline:2px solid var(--gold);outline-offset:1px}
+button:disabled{cursor:default;opacity:.75}
+button.primary{background:var(--gold);color:#1c1506;border-color:#ffe08a;font-weight:bold}
+button.small{padding:4px 9px;font-size:12px}
+.card{touch-action:pan-y;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(540px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #242118;padding:28px 30px;box-shadow:0 18px 60px #000c;-webkit-user-select:text;user-select:text}
+.card h1{font:bold 52px "Courier New",monospace;letter-spacing:.22em;margin:0 0 6px;color:var(--gold);text-shadow:0 0 18px #f2bd4255}
+.card h2{font-weight:normal;font-size:26px;margin:0 0 12px;color:var(--gold)}
+.card p{line-height:1.5;color:#d6ccb2}
+.eyebrow{font:11px "Courier New",monospace;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.note{font-size:13px;color:var(--muted)}
+.note a{color:var(--gold)}
+select{font:inherit;background:#242118;color:var(--ink);border:1px solid var(--line);padding:8px 10px;min-height:44px;margin-left:6px}
+select:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+dl.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:12px 0}
+dl.keys dt{font:13px "Courier New",monospace;color:var(--gold);white-space:nowrap}
+dl.keys dd{margin:0;color:#d6ccb2}
+#hud{position:absolute;inset:0;pointer-events:none;font:12px "Courier New",monospace}
+.stats{position:absolute;left:calc(10px + var(--safe-l));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);padding:8px 10px;width:236px;box-sizing:border-box;display:grid;gap:4px;pointer-events:auto}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:6px}
+#cash{color:#66e266;font-weight:bold;font-size:14px}
+#heat{color:#555044;letter-spacing:2px;font-size:14px}
+#heat.wanted{color:#ffbd2e;text-shadow:0 0 8px #ff5522aa}
+.hpline{display:flex;align-items:center;gap:8px}
+.bar{flex:1;height:9px;background:#3a1512;border:1px solid #6b2a22}
+#hp-bar{display:block;height:100%;background:#38c462;transition:width .15s}
+#hp-bar.low{background:#ff5238;animation:pulse .65s infinite alternate}
+@keyframes pulse{to{opacity:.45}}
+#speedline{color:#d8ceb6;display:flex;justify-content:space-between;gap:6px}
+.tools{display:flex;gap:5px;margin-top:3px}
+#minimap{position:absolute;right:calc(10px + var(--safe-r));top:calc(10px + var(--safe-t));width:108px;height:108px;background:#0a0c10e6;border:1px solid var(--line);box-sizing:border-box;pointer-events:auto}
+#objective{position:absolute;left:50%;top:calc(10px + var(--safe-t));transform:translateX(-50%);width:min(420px,calc(100vw - 390px));box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);padding:6px 10px;text-align:center;font:13px Georgia,serif;color:#f2e8ce}
+#toast{position:absolute;left:50%;bottom:calc(28px + var(--safe-b));transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:8px 14px;font:13px "Courier New",monospace;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
+#toast.visible{opacity:1}
+#map{width:min(540px,calc(100vw - 24px))}
+#fullmap{display:block;width:100%;max-width:340px;height:auto;aspect-ratio:1/1;margin:8px auto;background:#090b10;border:1px solid var(--line)}
+.legend{font:12px "Courier New",monospace;color:#d6ccb2;display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin:6px 0}
+#touch{position:absolute;left:0;right:0;bottom:0;height:0}
+#touch .pad,#touch .side{position:absolute;bottom:calc(12px + var(--safe-b));display:grid;gap:6px}
+#touch .pad{left:calc(10px + var(--safe-l));grid-template-columns:repeat(2,56px)}
+#touch .side{right:calc(10px + var(--safe-r));grid-template-columns:repeat(2,58px)}
+#touch button{height:50px;padding:0;font:16px "Courier New",monospace;background:#181610cc;touch-action:none;user-select:none;-webkit-user-select:none}
+#touch small{display:block;font-size:9px;color:var(--muted)}
+body.touch button.small{min-height:44px;min-width:44px}
+body.touch #toast{bottom:calc(130px + var(--safe-b))}
+body:not([data-mode=play]) #touch{display:none}
+#fatal{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#06070a;color:var(--ink);padding:24px}
+@media(max-width:860px){
+  .stats{width:218px;padding:6px 8px}
+  #minimap{width:96px;height:96px}
+  #objective{left:calc(236px + var(--safe-l));right:calc(114px + var(--safe-r));width:auto;transform:none;font-size:12px;padding:5px 8px}
+}
+@media(max-width:560px){
+  .stats{width:calc(100vw - 118px);left:calc(8px + var(--safe-l));top:calc(8px + var(--safe-t))}
+  #minimap{width:90px;height:90px;right:calc(8px + var(--safe-r));top:calc(8px + var(--safe-t))}
+  #objective{left:calc(8px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(var(--stats-bottom,128px) + 6px);width:auto;transform:none}
+  .card{padding:20px}
+  .card h1{font-size:38px}
+  #touch .pad{grid-template-columns:repeat(2,52px)}
+  #touch .side{grid-template-columns:repeat(2,54px)}
+}
+@media(max-height:460px){
+  .stats{width:212px;padding:5px 8px;gap:2px}
+  #minimap{width:84px;height:84px}
+  #objective{left:calc(228px + var(--safe-l));right:calc(102px + var(--safe-r));top:calc(8px + var(--safe-t));width:auto;transform:none;font-size:11px;padding:4px 7px}
+  #touch .pad,#touch .side{bottom:calc(8px + var(--safe-b));gap:4px}
+  #touch button{height:44px}
+  body.touch #toast{top:calc(52px + var(--safe-t));bottom:auto;left:calc(228px + var(--safe-l));right:calc(102px + var(--safe-r));transform:none;max-width:none}
+}
+@media(prefers-reduced-motion:reduce){#hp-bar.low{animation:none}}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="view" aria-label="A top-down driving town drawn in coloured letters"></canvas>
+<section id="hud" hidden aria-label="Driver status">
+  <div class="stats">
+    <div class="topline"><span id="cash">$250</span><span id="heat" aria-label="Wanted level">☆☆☆☆☆</span></div>
+    <div class="hpline"><span id="hp-label">FOOT</span><div class="bar"><i id="hp-bar"></i></div><b id="hp">100%</b></div>
+    <div id="speedline"><span id="car-name">On foot</span><span id="speed">0 km/h</span><span id="district">Old Town</span></div>
+    <div class="tools">
+      <button id="map-btn" class="small" type="button">Map</button>
+      <button id="mute" class="small" type="button">Sound</button>
+      <button id="pause-btn" class="small" type="button">Pause</button>
+    </div>
+  </div>
+  <canvas id="minimap" width="108" height="108" aria-label="Town radar and police search circle"></canvas>
+  <div id="objective" role="status"></div>
+</section>
+<div id="toast" role="status"></div>
+<nav id="touch" hidden aria-label="Touch controls">
+  <div class="pad">
+    <button data-hold="left" aria-label="Steer left">&#9664;<small>left</small></button>
+    <button data-hold="right" aria-label="Steer right">&#9654;<small>right</small></button>
+  </div>
+  <div class="side">
+    <button data-hold="up" aria-label="Gas or walk up">&#9650;<small>gas</small></button>
+    <button data-hold="down" aria-label="Brake or reverse">&#9660;<small>brake</small></button>
+    <button data-hold="handbrake" aria-label="Handbrake">!<small>drift</small></button>
+    <button data-press="enter" aria-label="Enter car or answer phone">E<small>car</small></button>
+  </div>
+</nav>
+<section id="title" class="card" aria-labelledby="title-heading">
+  <div class="eyebrow">Glyph Arcade · top-down driving town</div>
+  <h1 id="title-heading">JOYRIDE</h1>
+  <p>Four districts, traffic with lanes and lights, ringing payphones and a police force that remembers what you did. Take twelve jobs across town, build up your garage, and pull off the armoured-van heist at the Docks.</p>
+  <div class="row">
+    <button id="new-run" class="primary" type="button">New town</button>
+    <button id="continue" type="button" hidden>Continue</button>
+    <button id="how-to" type="button">How to play</button>
+  </div>
+  <label class="note">Difficulty<select id="difficulty"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
+  <p id="best" class="note"></p>
+  <p class="note">Your town saves itself. <a href="index.html">More games in the arcade</a></p>
+</section>
+<section id="pause" class="card" hidden aria-labelledby="pause-heading">
+  <div class="eyebrow">Paused</div>
+  <h2 id="pause-heading">Engine idling</h2>
+  <div class="row">
+    <button id="resume-btn" class="primary" type="button">Resume</button>
+    <button id="pause-map" type="button">Town map (M)</button>
+    <button id="pause-help" type="button">Controls</button>
+    <button id="pause-title" type="button">Save and quit</button>
+  </div>
+</section>
+<section id="map" class="card" hidden aria-labelledby="map-heading">
+  <div class="eyebrow">Town overview</div>
+  <h2 id="map-heading">District Map</h2>
+  <canvas id="fullmap" width="320" height="320" aria-label="Full map of the four districts"></canvas>
+  <div class="legend">
+    <span><b style="color:#48ff68">$</b> Payphone</span>
+    <span><b style="color:#ffd838">*</b> Job goal</span>
+    <span><b style="color:#48f0f0">R</b> Respray ($500)</span>
+    <span><b style="color:#b8f048">G</b> Garage</span>
+    <span><b style="color:#ff5858">H</b> Hospital</span>
+    <span><b style="color:#6898ff">P</b> Police</span>
+  </div>
+  <p id="map-status" class="note"></p>
+  <div class="row"><button id="map-close" class="primary" type="button">Back to town (M)</button></div>
+</section>
+<section id="help" class="card" hidden aria-labelledby="help-heading">
+  <div class="eyebrow">Glovebox manual</div>
+  <h2 id="help-heading">How to drive</h2>
+  <dl class="keys">
+    <dt>W / S · ↑ / ↓</dt><dd>Throttle and brake/reverse in a car; walk on foot.</dd>
+    <dt>A / D · ← / →</dt><dd>Steer left and right; walk sideways on foot.</dd>
+    <dt>Space</dt><dd>Handbrake: kicks the tail out for drifts and tight corners.</dd>
+    <dt>E / Enter</dt><dd>Enter or leave a car, or answer a ringing payphone ($).</dd>
+    <dt>Shift · H</dt><dd>Sprint on foot · honk horn.</dd>
+    <dt>M · P / Esc</dt><dd>Full town map · pause.</dd>
+    <dt>Touch</dt><dd>Left buttons steer, right buttons control gas, brake, drift and car/phone.</dd>
+    <dt>Gamepad</dt><dd>Left stick steers, RT/LT gas and brake, A handbrake, Y enter/phone, Start pause.</dd>
+  </dl>
+  <p>Taking an occupied car or bumping people in view of witnesses raises your wanted stars. Break line of sight and stay outside the red search circle on the radar to cool off, or duck into the Respray shop ($500) when no cruiser can see you.</p>
+  <div class="row"><button id="help-back" class="primary" type="button">Back</button></div>
+</section>
+<section id="end" class="card" hidden aria-labelledby="end-title">
+  <div class="eyebrow">Heist complete</div>
+  <h2 id="end-title"></h2>
+  <p id="end-detail"></p>
+  <p id="end-score" class="note"></p>
+  <div class="row">
+    <button id="end-keep" class="primary" type="button">Keep cruising</button>
+    <button id="end-again" type="button">New town</button>
+    <button id="end-menu" type="button">Title</button>
+  </div>
+</section>
+<div id="fatal" hidden><h2>Joyride could not start</h2><p></p></div>
+<script>/*__CODE__*/</script>
+</body>
+</html>
