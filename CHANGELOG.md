@@ -5,6 +5,11 @@ All notable changes to Glyph Arcade are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Joyride (`games/joyride/`)**: A top-down open-world driving game on the shared engine, with rules, scene, app, shell, 9 rule checks, a road-graph bot that finishes all 13 jobs across town, a preview image and a smoke test.
+  - Seeded 160×160 towns with four districts (Heights, The Strip, Old Town, Docks), two-way avenues and side streets, traffic lights, pedestrians, and a day/night cycle with headlights and rain.
+  - Seven car types with speed-sensitive steering, lateral grip, handbrake drifts, crash damage, fire and explosions, plus Respray shop, Garage, 10 hidden packages, 5 stunt ramps and Taxi fares.
+  - Wanted heat (0–5 stars) with chasing cruisers, ramming/boxing tactics, roadblocks, spike strips, and a radar search circle.
+  - Twelve contact jobs across six mission types (Delivery, Checkpoints, Getaway, Tail, Wreck, Pickup rush) leading into the Docks armoured-van heist finale.
 - **Burrow (`games/burrow/`)**: A side-view digging and building game on the shared engine, with rules, scene, app, shell, 20 rule checks, a plain-input bot that plays from the first tree to the final boss, a preview image and a smoke test.
   - Seeded 320×150 worlds with surface groves, caves, copper, iron and crystal, water, lava, and an obsidian altar chamber under the spawn.
   - Tiered picks, swords and armour, workbench crafting, doors, ladders and torches, and an objective line that always names the next step.

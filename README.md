@@ -14,6 +14,7 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | **Inkfire** | A fast-paced, real-time first-person arena shooter. Navigate a procedurally generated sector, collect Red and Blue keycards, wield four distinct weapons, detonate slime barrels, defeat the cybernetic Titan, and reach the exit pad. |
 | **Wordfall** | A two-minute lane game. Letters fall in nine lanes: catch the next letter of the word and dodge the rest. Finish words in a row to build a combo. |
 | **Burrow** | A side-view digging and building game. Fell trees, mine copper, iron and crystal, survive the night, and forge the key that wakes The Maw at the bottom of the world. Flood-filled light, flowing water and lava, falling sand, and a world that saves itself. |
+| **Joyride** | A top-down open-world driving town across four districts with lanes, traffic lights, pedestrians, ringing payphones, twelve contact jobs, an armoured-van heist at the Docks, and five stars of police heat. |
 | [Next Stop](https://github.com/Taan1el/next-stop) | A rural steam railway in coloured letters ([play](https://taan1el.github.io/next-stop/)). Lives in its own repository. |
 
 ## How to Play
@@ -58,6 +59,17 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | Right click / `F` | Swing your sword, whatever you are holding. |
 | `1` to `9`, mouse wheel | Choose an item. |
 | `C` · `P` / `Esc` | Open crafting · pause. |
+
+### Joyride Controls
+
+| Key / Input | Action |
+|---|---|
+| `W` / `S`, `↑` / `↓` | Throttle and brake/reverse in a car; walk on foot. |
+| `A` / `D`, `←` / `→` | Steer left / right; walk sideways on foot. |
+| `Space` | Handbrake: kicks the tail out for drifts and tight turns. |
+| `E` / `Enter` | Enter or leave a car, or answer a ringing payphone (`$`). |
+| `Shift` · `H` | Sprint on foot · honk horn. |
+| `M` · `P` / `Esc` | Full town map · pause. |
 
 ### Touch, gamepad and difficulty
 
