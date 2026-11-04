@@ -366,6 +366,14 @@
   function findRoadPath(state, fromX, fromY, toX, toY) {
     const start = nearestNode(state, fromX, fromY), goal = nearestNode(state, toX, toY);
     if (start.id === goal.id) return [{ x: toX, y: toY }];
+    if (!state._pathCache) state._pathCache = new Map();
+    const key = (start.id << 8) | goal.id;
+    const hit = state._pathCache.get(key);
+    if (hit) {
+      const out = hit.slice();
+      out.push({ x: toX, y: toY });
+      return out;
+    }
     const dist = new Float64Array(state.intersections.length).fill(Infinity);
     const prev = new Int32Array(state.intersections.length).fill(-1);
     const used = new Uint8Array(state.intersections.length);
@@ -387,6 +395,7 @@
       out.push({ x: n.x, y: n.y, nodeId: n.id });
     }
     out.reverse();
+    state._pathCache.set(key, out.slice());
     out.push({ x: toX, y: toY });
     return out;
   }
