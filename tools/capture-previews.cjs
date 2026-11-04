@@ -121,6 +121,32 @@ const out = path.join(root, 'dist/previews');
     await page.screenshot({ path: path.join(out, 'burrow.png') });
     console.log('Wrote dist/previews/burrow.png');
 
+    // 5. Capture Joyride preview
+    await page.goto(pathToFileURL(path.join(root, 'dist/joyride.html')).href);
+    await page.waitForFunction(() => window.joyride);
+    await page.evaluate(() => {
+      const J = window.Joyride, app = window.joyride, state = J.newGame('preview-town');
+      state.clock = 0.62;
+      state.cash = 1450;
+      const inter = state.intersections[17];
+      const sports = J.makeCar(state, 'sports', inter.x - 1.5, inter.y + 0.5, 0.35, { driver: 'player', occupied: true });
+      sports.speed = 18;
+      const cruiser = J.makeCar(state, 'cruiser', inter.x - 6.0, inter.y - 0.5, 0.15, { driver: 'police', occupied: true });
+      const taxi = J.makeCar(state, 'taxi', inter.x + 5.0, inter.y + 1.2, Math.PI, { driver: 'traffic', occupied: true });
+      state.cars = [sports, cruiser, taxi];
+      state.player.carId = sports.id;
+      state.player.x = sports.x;
+      state.player.y = sports.y;
+      J.setHeat(state, 3, 'preview chase', []);
+      app.begin(state);
+      document.getElementById('toast').classList.remove('visible');
+    });
+    await page.waitForTimeout(450);
+    await page.evaluate(() => { window.joyride.mode = 'pause'; document.getElementById('pause').hidden = true; });
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: path.join(out, 'joyride.png') });
+    console.log('Wrote dist/previews/joyride.png');
+
     // Rebuild launcher so dist/index.html embeds the newly generated preview images
     buildLauncher({ siteUrl: process.env.PAGES_URL || '' });
   } finally {

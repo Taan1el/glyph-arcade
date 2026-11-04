@@ -10,7 +10,9 @@ const GAMES=[
   {id:'wordfall',title:'Wordfall',tagline:'Two minutes of falling letters. Catch the next one and dodge the rest.',
    parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/wordfall/src/rules.js','games/wordfall/src/scene.js','games/wordfall/src/app.js'],shell:'games/wordfall/src/shell.html'},
   {id:'burrow',title:'Burrow',tagline:'Dig, build and light your way down to the thing sleeping under the world.',
-   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/burrow/src/rules.js','games/burrow/src/scene.js','games/burrow/src/app.js'],shell:'games/burrow/src/shell.html'}
+   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/burrow/src/rules.js','games/burrow/src/scene.js','games/burrow/src/app.js'],shell:'games/burrow/src/shell.html'},
+  {id:'joyride',title:'Joyride',tagline:'Steal cars, take jobs from payphones and shake off the police in a living town drawn in letters.',
+   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/joyride/src/rules.js','games/joyride/src/scene.js','games/joyride/src/app.js'],shell:'games/joyride/src/shell.html'}
 ];
 const EXTERNAL=[
   {id:'next-stop',title:'Next Stop',tagline:'A rural steam railway in coloured letters. Drive, deliver and explore a valley.',href:'https://taan1el.github.io/next-stop/'}

@@ -58,7 +58,7 @@ async function check(browser, game, viewport, problems) {
   const browser = await chromium.launch({ headless: true });
   const problems = [];
   try {
-    for (const game of ['delve', 'inkfire', 'wordfall', 'burrow']) for (const viewport of VIEWPORTS) await check(browser, game, viewport, problems);
+    for (const game of ['delve', 'inkfire', 'wordfall', 'burrow', 'joyride']) for (const viewport of VIEWPORTS) await check(browser, game, viewport, problems);
   } finally {
     await browser.close();
   }

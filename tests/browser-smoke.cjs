@@ -23,7 +23,7 @@ const { pathToFileURL } = require('node:url');
       const skipLink = Boolean(document.querySelector('a.skip-link'));
       return { cards, overflow, manifest, skipLink };
     });
-    if (!['delve', 'inkfire', 'wordfall', 'burrow'].every(game => portalInfo.cards.includes(game + '.html'))) {
+    if (!['delve', 'inkfire', 'wordfall', 'burrow', 'joyride'].every(game => portalInfo.cards.includes(game + '.html'))) {
       throw new Error('Portal is missing delve.html or inkfire.html card: ' + JSON.stringify(portalInfo.cards));
     }
     if (portalInfo.overflow) throw new Error('Portal overflows horizontally at 360px viewport width');
@@ -174,6 +174,49 @@ const { pathToFileURL } = require('node:url');
     if (burrowOut.cells < 6) throw new Error('Burrow scene drew too few distinct letters: ' + burrowOut.cells);
     if (errors.length) throw new Error(errors.join('\n'));
     console.log('PASS Burrow boots, walks, digs, crafts, saves and renders', JSON.stringify(burrowOut));
+
+    // 6. Joyride smoke check
+    await page.goto(pathToFileURL(path.join(__dirname, '../dist/joyride.html')).href);
+    await page.waitForTimeout(800);
+    if (await page.evaluate(() => !document.getElementById('fatal').hidden)) {
+      throw new Error('Joyride fatal: ' + await page.textContent('#fatal p'));
+    }
+    await page.click('#new-run');
+    await page.waitForTimeout(300);
+    await page.evaluate(() => {
+      const app = window.joyride, s = app.state, c = s.cars[0];
+      s.player.x = c.x;
+      s.player.y = c.y + 1;
+    });
+    await page.keyboard.press('KeyE');
+    await page.waitForTimeout(150);
+    const joyStart = await page.evaluate(() => window.joyride.state.player.x);
+    await page.keyboard.down('KeyW');
+    await page.waitForTimeout(500);
+    await page.keyboard.up('KeyW');
+    await page.keyboard.press('KeyM');
+    await page.waitForTimeout(100);
+    const mapOpen = await page.evaluate(() => window.joyride.mode === 'map' && !document.getElementById('map').hidden);
+    if (!mapOpen) throw new Error('Joyride map panel did not open');
+    await page.keyboard.press('KeyM');
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(100);
+    await page.click('#pause-title');
+    await page.waitForTimeout(100);
+    await page.click('#continue');
+    await page.waitForTimeout(200);
+    const joyOut = await page.evaluate(startX => ({
+      carId: window.joyride.state.player.carId,
+      moved: Math.abs(window.joyride.state.player.x - startX) > 0.2,
+      mode: window.joyride.mode,
+      cells: new Set(window.joyride.view.inspect().glyphs).size
+    }), joyStart);
+    if (!joyOut.carId) throw new Error('Joyride did not enter car on KeyE');
+    if (!joyOut.moved) throw new Error('Joyride car did not move on KeyW');
+    if (joyOut.mode !== 'play') throw new Error('Joyride did not continue from its save');
+    if (joyOut.cells < 6) throw new Error('Joyride scene drew too few distinct letters: ' + joyOut.cells);
+    if (errors.length) throw new Error(errors.join('\n'));
+    console.log('PASS Joyride boots, enters car, drives, opens map, saves and renders', JSON.stringify(joyOut));
   } finally {
     await browser.close();
   }
