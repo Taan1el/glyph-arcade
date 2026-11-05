@@ -38,11 +38,19 @@
   };
 
   const FRAMES = {
-    playerIdle: [['@', 'H'], ['y', 'c']],
-    playerWalk: [['@', 'X'], ['y', 'c']],
+    playerIdle: [[' @ ', '/H\\'], [' y ', 'ccc']],
+    playerWalk: [[' @ ', '/X\\'], [' y ', 'cwc']],
     pedDown:    [['_@_'], ['sss']],
     marker:     [['\\V/', ' * '], ['yyy', ' y ']],
-    parcel:     [['[$]'], ['gyg']]
+    parcel:     [['[$]'], ['gyg']],
+    'arrow.N':  [['/^\\', ' | '], ['yyy', ' y ']],
+    'arrow.NE': [[' /^', ' / '], [' yy', ' y ']],
+    'arrow.E':  [['-->'], ['yyy']],
+    'arrow.SE': [[' \\ ', ' \\V'], [' y ', ' yy']],
+    'arrow.S':  [[' | ', '\\V/'], [' y ', 'yyy']],
+    'arrow.SW': [[' / ', 'V/ '], [' y ', 'yy ']],
+    'arrow.W':  [['<--'], ['yyy']],
+    'arrow.NW': [['^\\ ', ' \\ '], ['yy ', ' y ']]
   };
   for (const [kind, dirs] of Object.entries(CAR_SPECS)) {
     for (const [dir, frame] of Object.entries(dirs)) {
@@ -288,6 +296,8 @@
       this.engine.setTexture('art', 6, this.art.width, this.art.height, this.art.data);
       this.spriteData = new Uint8Array(MAX_SPRITES * 3 * 4);
       this.engine.setTexture('sprites', 7, MAX_SPRITES, 3, this.spriteData);
+      this.markStamp = new Uint32Array(160 * 160);
+      this.stampId = 1;
       this.columns = 1;
       this.rows = 1;
     }
@@ -318,10 +328,12 @@
       const data = this.worldData;
       data.fill(0);
 
-      // Mark tyre marks in a quick lookup set for the visible window
-      const markSet = new Set();
-      for (const m of state.marks) {
-        markSet.add(J.index(Math.floor(m.x), Math.floor(m.y)));
+      // Stamp active tyre marks in O(marks) without per-frame Set allocation
+      const stamp = (this.stampId = (this.stampId + 1) >>> 0) || 1;
+      const markStamp = this.markStamp;
+      for (let m = 0; m < state.marks.length; m++) {
+        const mk = state.marks[m], mx = Math.floor(mk.x), my = Math.floor(mk.y);
+        if (J.inBounds(mx, my)) markStamp[J.index(mx, my)] = stamp;
       }
 
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -335,13 +347,13 @@
         data[at] = tile;
         data[at + 1] = state.districts[i];
         if (tile === J.T.INTERSECTION) {
-          const inter = J.nearestNode(state, wx + 0.5, wy + 0.5);
+          const inter = state.intersections[state.roofStyle[i]] || state.intersections[0];
           const ls = J.lightState(state, inter);
           data[at + 2] = ls === 'NS' ? 1 : ls === 'NS_Y' ? 2 : ls === 'EW' ? 3 : 4;
         } else {
           data[at + 2] = state.roofStyle[i];
         }
-        data[at + 3] = markSet.has(i) ? 1 : 0;
+        data[at + 3] = markStamp[i] === stamp ? 1 : 0;
       }
       this.engine.setTexture('world', 4, w, h, data);
       this.origin = [ox, oy];

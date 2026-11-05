@@ -91,6 +91,8 @@
     play(name) {
       switch (name) {
         case 'skid': this.noise(0.09, { volume: 0.06, filter: 1900 }); break;
+        case 'hit': this.noise(0.08, { volume: 0.1, filter: 550 }); this.tone(130, 0.09, { type: 'triangle', slide: -40, volume: 0.08 }); break;
+        case 'alarm': this.tone(740, 0.12, { type: 'sawtooth', volume: 0.1 }); this.tone(520, 0.12, { type: 'sawtooth', volume: 0.1, delay: 0.13 }); break;
         case 'crash': this.noise(0.18, { volume: 0.16, filter: 650 }); this.tone(95, 0.14, { type: 'sawtooth', slide: -45, volume: 0.1 }); break;
         case 'explosion': this.noise(0.55, { volume: 0.25, filter: 380 }); this.tone(65, 0.45, { type: 'sawtooth', slide: -35, volume: 0.18 }); break;
         case 'horn': this.tone(370, 0.18, { type: 'sawtooth', volume: 0.09 }); this.tone(466, 0.18, { type: 'sawtooth', volume: 0.08 }); break;
@@ -127,8 +129,11 @@
       ];
       this.el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
       this.el.stats = document.querySelector('.stats');
+      this.el.enterBtn = this.el.touch.querySelector('[data-press="enter"]');
       this.miniCtx = this.el.minimap.getContext('2d');
       this.fullCtx = this.el.fullmap.getContext('2d');
+      this.mapBg = null;
+      this.mapBgSeed = null;
 
       this.mode = 'title';
       this.state = null;
@@ -270,12 +275,19 @@
     resize() {
       const narrow = global.innerWidth < 700;
       const base = narrow ? [7, 10] : [8, 12];
-      const cell = this.quality.cell([
-        Math.max(5, Math.round(base[0] * this.zoomScale)),
-        Math.max(8, Math.round(base[1] * this.zoomScale))
-      ]);
+      const cell = this.quality.cell(base);
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
       this.view.resize(global.innerWidth, global.innerHeight, cell);
+      this.syncStatsBottom();
+    }
+
+    syncStatsBottom() {
+      if (!this.el.stats || this.el.hud.hidden) return;
+      const panelBottom = Math.ceil(this.el.stats.getBoundingClientRect().bottom);
+      if (panelBottom > 0 && panelBottom !== this.panelBottom) {
+        this.panelBottom = panelBottom;
+        document.documentElement.style.setProperty('--stats-bottom', panelBottom + 'px');
+      }
     }
 
     show(mode) {
@@ -335,8 +347,9 @@
       this.accumulator = 0;
       this.saveTimer = 0;
       this.shownVictory = Boolean(state.won);
-      this.updateHud();
       this.show('play');
+      this.syncStatsBottom();
+      this.updateHud();
       this.sound.ensure();
     }
 
@@ -397,6 +410,24 @@
             break;
           case 'skid':
             this.sound.play('skid');
+            this.burst(e.x, e.y, ['.', ':'], [175, 180, 190], 2);
+            break;
+          case 'pedBump':
+            this.sound.play('hit');
+            this.shake = Math.max(this.shake, 0.12);
+            this.burst(e.x, e.y, ['*', '!'], [255, 165, 90], 3);
+            break;
+          case 'hurt':
+            this.sound.play('hit');
+            this.shake = Math.max(this.shake, 0.2);
+            this.pulse(0.9, 0.15, 0.15, 0.28, 0.25);
+            break;
+          case 'carFire':
+            if (this.state && e.carId === this.state.player.carId) {
+              this.sound.play('alarm');
+              this.pulse(1, 0.25, 0.05, 0.38, 0.45);
+              this.toast('CAR ON FIRE! Press E to bail out before it explodes!');
+            }
             break;
           case 'crash':
             this.sound.play('crash');
@@ -415,6 +446,10 @@
           case 'heat':
             this.sound.play('siren');
             this.toast(`Wanted ★${e.stars}: ${e.reason}`);
+            break;
+          case 'heatCool':
+            this.sound.play('checkpoint');
+            this.toast(e.stars === 0 ? 'Police lost your trail — heat cleared!' : `Wanted heat cooled to ★${e.stars}`);
             break;
           case 'respray':
             this.sound.play('respray');
@@ -449,8 +484,13 @@
             this.toast(`Fare dropped off! +$${e.payout} (tip $${e.tip})`);
             break;
           case 'checkpoint':
+            this.sound.play('checkpoint');
+            this.burst(e.x, e.y, ['*', '+', '^'], [255, 226, 82], 6);
+            this.toast(`Checkpoint ${e.index}/${e.total}!`);
+            break;
           case 'parcelPicked':
             this.sound.play('checkpoint');
+            this.burst(e.x, e.y, ['$', '*', '+'], [98, 203, 76], 6);
             break;
           case 'crewPickedUp':
             this.sound.play('jobStart');
@@ -527,33 +567,47 @@
       this.el.speed.textContent = `${kmh} km/h`;
       const dCode = J.districtAt(s, Math.floor(pos.x), Math.floor(pos.y));
       this.el.district.textContent = J.DISTRICTS[dCode]?.name || 'Town';
-      this.el.objective.textContent = J.objective(s);
+      const objText = J.objective(s);
+      this.el.objective.textContent = objText;
 
-      const panelBottom = Math.ceil(this.el.stats.getBoundingClientRect().bottom);
-      if (panelBottom !== this.panelBottom) {
-        this.panelBottom = panelBottom;
-        document.documentElement.style.setProperty('--stats-bottom', panelBottom + 'px');
+      if (this.el.enterBtn) {
+        let label = car ? 'E out' : 'E';
+        if (car && car.fireTimer > 0) label = 'E bail!';
+        else if (objText.includes('Press E to answer')) label = 'E phone';
+        else if (!car && objText.includes('Press E: enter')) label = 'E car';
+        this.el.enterBtn.textContent = label;
       }
       this.drawMinimap();
     }
 
-    drawMapToCanvas(ctx, width, height, full = false) {
-      const s = this.state, pos = J.playerPos(s);
-      ctx.fillStyle = '#080b12';
-      ctx.fillRect(0, 0, width, height);
-
-      const sx = width / J.WIDTH, sy = height / J.HEIGHT;
-      // Draw water, parks, roads
+    ensureMapBg(s) {
+      if (this.mapBg && this.mapBgSeed === s.seed) return this.mapBg;
+      const bg = document.createElement('canvas');
+      bg.width = J.WIDTH;
+      bg.height = J.HEIGHT;
+      const bctx = bg.getContext('2d');
+      bctx.fillStyle = '#080b12';
+      bctx.fillRect(0, 0, J.WIDTH, J.HEIGHT);
       for (let y = 0; y < J.HEIGHT; y += 2) {
         for (let x = 0; x < J.WIDTH; x += 2) {
           const t = s.tiles[J.index(x, y)];
-          if (t === J.T.WATER) ctx.fillStyle = '#113458';
-          else if (t === J.T.GRASS) ctx.fillStyle = '#1d4822';
-          else if (t >= J.T.ROAD && t <= J.T.BRIDGE) ctx.fillStyle = '#484d58';
+          if (t === J.T.WATER) bctx.fillStyle = '#113458';
+          else if (t === J.T.GRASS) bctx.fillStyle = '#1d4822';
+          else if (t >= J.T.ROAD && t <= J.T.BRIDGE) bctx.fillStyle = '#484d58';
           else continue;
-          ctx.fillRect(x * sx, y * sy, Math.ceil(2 * sx), Math.ceil(2 * sy));
+          bctx.fillRect(x, y, 2, 2);
         }
       }
+      this.mapBg = bg;
+      this.mapBgSeed = s.seed;
+      return bg;
+    }
+
+    drawMapToCanvas(ctx, width, height, full = false) {
+      const s = this.state, pos = J.playerPos(s);
+      ctx.drawImage(this.ensureMapBg(s), 0, 0, width, height);
+
+      const sx = width / J.WIDTH, sy = height / J.HEIGHT;
 
       // Search circle when wanted
       if (s.searchCircle && s.heat > 0) {
@@ -596,9 +650,18 @@
         }
       }
 
-      // Objective target or taxi fare
+      // Objective target or taxi fare (with dashed guide line from player)
       const target = J.objectiveTarget(s) || s.taxiFare;
       if (target) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 216, 56, 0.55)';
+        ctx.lineWidth = full ? 1.5 : 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(pos.x * sx, pos.y * sy);
+        ctx.lineTo(target.x * sx, target.y * sy);
+        ctx.stroke();
+        ctx.restore();
         dot(target.x, target.y, '#ffd838', full ? 5 : 3.5);
       }
 
@@ -652,16 +715,37 @@
         if (onScreen(at, 1, 1)) sprites.push({ x: at.x, y: at.y, char: part.char, colour: part.colour, lit: true });
       }
 
-      // Active job marker / parcels / checkpoints
+      // Active job marker / parcels / checkpoints + off-screen directional edge arrow
       const job = state.activeJob;
-      if (job) {
-        if (job.type === 'pickup') {
-          for (const p of job.parcels) if (!p.taken) addFrame(p.x, p.y, 'parcel', false, true);
+      const navTarget = job ? J.objectiveTarget(state) : (state.taxiFare || J.objectiveTarget(state));
+      if (job && job.type === 'pickup') {
+        for (const p of job.parcels) if (!p.taken) addFrame(p.x, p.y, 'parcel', false, true);
+      }
+      if (navTarget && this.mode !== 'title') {
+        const mAt = toCell(navTarget.x, navTarget.y - 1.5);
+        if (onScreen(mAt, 3, 2)) {
+          addFrame(navTarget.x, navTarget.y - 1.5, 'marker', false, true);
+        } else {
+          const pos = J.playerPos(state);
+          const angle = Math.atan2(navTarget.y - pos.y, navTarget.x - pos.x);
+          const dir = headingDir(angle);
+          const f = this.view.art.index[`arrow.${dir}`];
+          if (f) {
+            const cx = this.view.columns / 2, cy = this.view.rows / 2;
+            const padX = Math.max(4, Math.floor(this.view.columns * 0.1));
+            const minY = 9, maxY = Math.max(minY + 4, this.view.rows - (document.body.classList.contains('touch') ? 16 : 5));
+            const halfW = Math.max(6, cx - padX), halfH = Math.max(4, (maxY - minY) / 2);
+            const midY = (minY + maxY) / 2;
+            const cos = Math.cos(angle), sin = Math.sin(angle);
+            const scale = Math.min(
+              Math.abs(cos) > 0.01 ? halfW / Math.abs(cos) : 999,
+              Math.abs(sin) > 0.01 ? halfH / Math.abs(sin) : 999
+            );
+            const ax = clamp(Math.round(cx + cos * scale - f.w / 2), 2, this.view.columns - f.w - 2);
+            const ay = clamp(Math.round(midY + sin * scale - f.h / 2), minY, maxY - f.h);
+            sprites.push({ x: ax, y: ay, frame: `arrow.${dir}`, flash: false, lit: true });
+          }
         }
-        const target = J.objectiveTarget(state);
-        if (target) addFrame(target.x, target.y - 0.8, 'marker', false, true);
-      } else if (state.taxiFare) {
-        addFrame(state.taxiFare.x, state.taxiFare.y - 0.8, 'marker', false, true);
       }
 
       // Hidden packages (?)
@@ -680,7 +764,15 @@
         }
       }
 
-      // Cars (8 headings, plus police roof light bars)
+      // Player on foot (drawn before cars so parked cars never hide the player)
+      if (!state.player.carId && this.mode !== 'title') {
+        const p = state.player, moving = Math.hypot(p.vx, p.vy) > 0.6;
+        const step = Math.floor(p.anim * 2) % 2;
+        addFrame(p.x, p.y, moving && step ? 'playerWalk' : 'playerIdle', p.hurtTimer > 0.2, true);
+      }
+
+      // Cars (8 headings, plus police roof light bars and night headlights)
+      const night = J.isNight(state);
       for (const car of state.cars) {
         const dir = headingDir(car.angle);
         const kind = car.wrecked ? 'wreck' : car.kind;
@@ -691,14 +783,15 @@
             sprites.push({ x: at.x, y: at.y, char: '*', colour: red ? [255, 60, 60] : [70, 145, 255], lit: true });
           }
         }
-        addFrame(car.x, car.y, `${kind}.${dir}`, car.flash > 0.1, car.id === state.player.carId);
-      }
-
-      // Player on foot
-      if (!state.player.carId && this.mode !== 'title') {
-        const p = state.player, moving = Math.hypot(p.vx, p.vy) > 0.6;
-        const step = Math.floor(p.anim * 2) % 2;
-        addFrame(p.x, p.y, moving && step ? 'playerWalk' : 'playerIdle', p.hurtTimer > 0.2, true);
+        if (night && !car.wrecked && car.occupied) {
+          const hx = car.x + Math.cos(car.angle) * 1.15, hy = car.y + Math.sin(car.angle) * 1.15;
+          const hAt = toCell(hx, hy);
+          if (onScreen(hAt, 1, 1)) {
+            sprites.push({ x: hAt.x, y: hAt.y, char: '*', colour: [255, 240, 175], lit: true });
+          }
+        }
+        const isLit = car.id === state.player.carId || car.missionImportant || (night && !car.wrecked && car.occupied);
+        addFrame(car.x, car.y, `${kind}.${dir}`, car.flash > 0.1, isLit);
       }
 
       // Pedestrians
@@ -809,12 +902,7 @@
       const pos = J.playerPos(state);
       const car = J.playerCar(state);
 
-      // Camera leads ahead of a fast car and zooms out slightly at speed
-      const wantedZoom = car && Math.abs(car.speed) > 15 ? 0.88 : 1.0;
-      if (Math.abs(wantedZoom - this.zoomScale) > 0.05) {
-        this.zoomScale = wantedZoom;
-        this.resize();
-      }
+      // Camera leads smoothly ahead of a fast car without reallocating WebGL buffers mid-drive
       const targetLeadX = car && !this.reducedMotion ? car.vx * 0.28 : 0;
       const targetLeadY = car && !this.reducedMotion ? car.vy * 0.28 : 0;
       this.camLead.x += (targetLeadX - this.camLead.x) * Math.min(1, dt * 4.5);

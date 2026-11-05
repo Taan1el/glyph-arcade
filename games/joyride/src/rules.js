@@ -34,7 +34,7 @@
   const TRAFFIC_KINDS = ['compact', 'sedan', 'sedan', 'van', 'sports', 'taxi'];
 
   const CONTACTS = [
-    { id: 'sal', name: 'Sal at the Docks', district: DIST.OLD_TOWN },
+    { id: 'sal', name: 'Sal in Old Town', district: DIST.OLD_TOWN },
     { id: 'vee', name: 'Vee on The Strip', district: DIST.STRIP },
     { id: 'bishop', name: 'Bishop in Heights', district: DIST.HEIGHTS }
   ];
@@ -244,10 +244,12 @@
       nodeGrid[gy] = [];
       for (let gx = 0; gx < vRoads.length; gx++) {
         const vr = vRoads[gx], hr = hRoads[gy];
-        for (let dy = 0; dy < hr.w; dy++) for (let dx = 0; dx < vr.w; dx++) {
-          tiles[index(vr.x + dx, hr.y + dy)] = T.INTERSECTION;
-        }
         const id = intersections.length;
+        for (let dy = 0; dy < hr.w; dy++) for (let dx = 0; dx < vr.w; dx++) {
+          const ti = index(vr.x + dx, hr.y + dy);
+          tiles[ti] = T.INTERSECTION;
+          roofStyle[ti] = id;
+        }
         const node = {
           id, gx, gy,
           x: vr.x + vr.w / 2,
@@ -366,7 +368,7 @@
   function findRoadPath(state, fromX, fromY, toX, toY) {
     const start = nearestNode(state, fromX, fromY), goal = nearestNode(state, toX, toY);
     if (start.id === goal.id) return [{ x: toX, y: toY }];
-    if (!state._pathCache) state._pathCache = new Map();
+    if (!(state._pathCache instanceof Map)) state._pathCache = new Map();
     const key = (start.id << 8) | goal.id;
     const hit = state._pathCache.get(key);
     if (hit) {
@@ -453,8 +455,8 @@
     };
     generateTown(state);
     const startPhone = state.payphones[0];
-    state.player.x = startPhone.x + 1.5;
-    state.player.y = startPhone.y + 1.2;
+    state.player.x = startPhone.x - 1.5;
+    state.player.y = startPhone.y + 1.0;
     spawnInitialTownEntities(state);
     return state;
   }
@@ -1633,6 +1635,13 @@
   }
 
   // --- Objective helper: always names the clear next step
+  const COMPASS = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+  function compassDir(dx, dy) {
+    if (Math.hypot(dx, dy) < 2) return 'here';
+    const norm = ((Math.atan2(dy, dx) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    return COMPASS[Math.round((norm / (Math.PI * 2)) * 8) % 8];
+  }
+
   function objectiveTarget(state) {
     const job = state.activeJob;
     if (!job) {
@@ -1644,7 +1653,7 @@
     }
     if (job.type === 'delivery') {
       const car = state.cars.find(c => c.id === job.targetCarId);
-      if (car && state.player.carId !== car.id) return { x: car.x, y: car.y, label: `Pick up the ${CARS[car.kind].name}` };
+      if (car && state.player.carId !== car.id) return { x: car.x, y: car.y, label: `Pick up the marked ${CARS[car.kind].name}` };
       if (car && car.hp < job.minHp) return { x: state.respray.x, y: state.respray.y, label: `Repair at Respray (${Math.ceil(car.hp)}%/${job.minHp}%)` };
       return { x: job.drop.x, y: job.drop.y, label: 'Deliver the car to the drop point' };
     }
@@ -1659,8 +1668,14 @@
     }
     if (job.type === 'tail') {
       const target = state.cars.find(c => c.id === job.targetCarId);
+      if (!target) return null;
+      const pos = playerPos(state);
+      const d = Math.round(Math.hypot(target.x - pos.x, target.y - pos.y));
       const pct = Math.min(100, Math.floor((job.progress / job.duration) * 100));
-      return target ? { x: target.x, y: target.y, label: `Tail target (${pct}%) — keep 6-25 tiles back` } : null;
+      let status = `${d}m back — good`;
+      if (d < job.minDist) status = `TOO CLOSE (${d}m) — back off!`;
+      else if (d > job.maxDist) status = `TOO FAR (${d}m) — close in!`;
+      return { x: target.x, y: target.y, label: `Tail target (${pct}%): ${status}` };
     }
     if (job.type === 'wreck') {
       const targets = job.rivalIds.map(id => state.cars.find(c => c.id === id)).filter(c => c && !c.wrecked);
@@ -1685,11 +1700,43 @@
 
   function objective(state) {
     if (state.won) return 'The Armoured Van is aboard the freighter. The town is yours.';
+    const car = playerCar(state);
+    if (car && car.fireTimer > 0) return 'CAR ON FIRE! Press E to bail out!';
+
+    const pos = playerPos(state);
     const target = objectiveTarget(state);
-    if (state.activeJob && target) return `${state.activeJob.title}: ${target.label}`;
-    if (state.taxiFare) return `Taxi fare: drop passenger at marker (${Math.ceil(state.taxiFare.timer)}s)`;
-    if (target) return `Answer payphone ($): ${target.label}`;
-    return 'Explore the town, run taxi fares, or jump stunt ramps.';
+    let navSuffix = '';
+    if (target && (!state.activeJob || state.activeJob.type !== 'tail')) {
+      const dx = target.x - pos.x, dy = target.y - pos.y;
+      const dist = Math.round(Math.hypot(dx, dy));
+      if (dist >= 4) navSuffix = ` (${dist}m ${compassDir(dx, dy)})`;
+    }
+
+    // Context-sensitive action prompt when standing next to a ringing payphone or drivable car
+    let prompt = '';
+    if (!state.activeJob) {
+      const nearPhone = state.payphones.find(ph => availableJobForPhone(state, ph) && Math.hypot(ph.x - pos.x, ph.y - pos.y) < (car ? 3.2 : 2.6));
+      if (nearPhone && (!car || Math.abs(car.speed) < 3)) {
+        prompt = ' · [Press E to answer]';
+      }
+    }
+    if (!prompt && !car) {
+      let bestCar = null, bestDist = 3.0;
+      for (const c of state.cars) {
+        if (c.wrecked) continue;
+        const d = Math.hypot(c.x - pos.x, c.y - pos.y);
+        if (d < bestDist) { bestDist = d; bestCar = c; }
+      }
+      if (bestCar) prompt = ` · [Press E: enter ${CARS[bestCar.kind].name}]`;
+    }
+
+    if (state.activeJob && target) return `${state.activeJob.title}: ${target.label}${navSuffix}${prompt}`;
+    if (state.taxiFare) {
+      const dx = state.taxiFare.x - pos.x, dy = state.taxiFare.y - pos.y;
+      return `Taxi fare: drop passenger at marker (${Math.round(Math.hypot(dx, dy))}m ${compassDir(dx, dy)}, ${Math.ceil(state.taxiFare.timer)}s)`;
+    }
+    if (target) return `Answer payphone ($): ${target.label}${navSuffix}${prompt}`;
+    return `Explore the town, run taxi fares, or jump stunt ramps.${prompt}`;
   }
 
   // --- Main step. input: { up, down, left, right, handbrake, enter, sprint, horn }
@@ -1723,6 +1770,12 @@
       if (input.horn && car.honkTimer <= 0) {
         car.honkTimer = 0.6;
         events.push({ type: 'horn', x: car.x, y: car.y, player: true });
+        for (const ped of state.peds) {
+          if (ped.downTimer <= 0 && Math.hypot(ped.x - car.x, ped.y - car.y) < 7) {
+            ped.panicTimer = Math.max(ped.panicTimer, 2.5);
+            ped.angle = Math.atan2(ped.y - car.y, ped.x - car.x);
+          }
+        }
       }
       stepCarPhysics(state, car, input, dt, events);
       state.player.x = car.x;
@@ -1785,7 +1838,7 @@
   };
 
   function save(state) {
-    const { tiles, districts, roofStyle, ...rest } = state;
+    const { tiles, districts, roofStyle, _pathCache, ...rest } = state;
     return JSON.stringify({
       ...rest,
       tiles: packBytes(tiles),
