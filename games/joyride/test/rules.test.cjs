@@ -195,9 +195,11 @@ test('Getting busted or wasted costs 10% cash and respawns at the police station
   const dummyCar = J.makeCar(state, 'sedan', state.player.x, state.player.y, 0);
   state.cars.push(dummyCar);
   state.player.carId = dummyCar.id;
-  // Explode the player's car
-  const wEvents = [];
-  J.damageCar(state, dummyCar, 999, 'test', wEvents);
+  // A lethal hit sets the player's car burning first; staying inside wastes the driver
+  const wEvents = J.damageCar(state, dummyCar, 999, 'test', []) || [];
+  assert(dummyCar.fireTimer > 0 && !dummyCar.wrecked, 'the player car burns before it explodes');
+  for (let i = 0; i < 200 && !wEvents.some(e => e.type === 'wasted'); i++) wEvents.push(...tick(state));
+  assert(dummyCar.wrecked, 'the burning car explodes');
   assert(wEvents.some(e => e.type === 'wasted'), 'emitted wasted event');
   assert.equal(state.wastedCount, 1);
   assert.equal(state.cash, 900, 'wasted cost 10% cash');
@@ -214,7 +216,10 @@ test('Getting busted or wasted costs 10% cash and respawns at the police station
   const cop = state.cars.find(c => c.driver === 'police');
   cop.x = car2.x + 1.4;
   cop.y = car2.y;
-  const bEvents = tick(state, { handbrake: true }, 120);
+  const early = tick(state, { handbrake: true }, 60);
+  assert(!early.some(e => e.type === 'busted'), 'a stalled car gets a moment to pull away');
+  assert.match(J.objective(state), /Police boxing you in/, 'the objective line warns before a bust');
+  const bEvents = tick(state, { handbrake: true }, 180);
   assert(bEvents.some(e => e.type === 'busted'), 'emitted busted event');
   assert.equal(state.bustedCount, 1);
   assert.equal(state.cash, 810, 'busted cost 10% cash');
@@ -361,6 +366,37 @@ test('Save and restore round-trip and stay deterministic', () => {
   assert.throws(() => J.restore({ version: 99 }), /not a Joyride town/);
 });
 
+test('A completed story keeps the town, driving and side activities running', () => {
+  const state = J.newGame('free-roam');
+  state.won = true;
+  state.endTime = 1200;
+  state.completedJobs = J.JOBS.map(job => job.id);
+  state.jobsDone = 13;
+  const before = state.time;
+  const x = state.player.x;
+  tick(state, { right: true }, 60);
+  assert(state.time > before, 'town time continues after the finale');
+  assert.notEqual(state.player.x, x, 'player can explore after the finale');
+  assert.equal(state.endTime, 1200, 'story completion time remains fixed');
+  assert(state.won, 'completion remains saved');
+  assert(state.payphones.every(phone => !J.availableJobForPhone(state, phone)), 'finished jobs stay finished');
+});
+
+test('Garage repairs extinguish a burning vehicle', () => {
+  const state = J.newGame('garage-fire');
+  state.cars = [];
+  state.peds = [];
+  const car = J.makeCar(state, 'compact', state.garage.x, state.garage.y, 0, { driver: 'player', occupied: true });
+  state.cars.push(car);
+  state.player.carId = car.id;
+  car.hp = 10;
+  car.fireTimer = 2;
+  tick(state);
+  assert.equal(car.hp, car.maxHp);
+  assert.equal(car.fireTimer, 0, 'a repaired car must not explode moments later');
+  tick(state, {}, 180);
+  assert(!car.wrecked);
+});
 test('A plain-input bot drives the road graph and finishes the story on at least 3 of 4 seeds within 45 simulated minutes', () => {
   const seeds = ['one', 'two', 'three', 'four'];
   const runs = seeds.map(seed => playRun(J, seed, 'normal', 45));

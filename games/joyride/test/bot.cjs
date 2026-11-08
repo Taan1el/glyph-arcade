@@ -97,8 +97,9 @@ function createBot(J) {
       requiredCar = state.cars.find(c => c.id === job.targetCarId) || null;
     }
 
-    // 1. Bail out of a non-mission car if its HP is low or a better car is right next to us
-    if (pCar && (!requiredCar || pCar.id !== requiredCar.id)) {
+    // 1. Bail out of any burning car, as the objective line tells a player to,
+    //    and out of a non-mission car that is badly hurt
+    if (pCar && (pCar.fireTimer > 0 || !requiredCar || pCar.id !== requiredCar.id)) {
       if (pCar.hp < 38 || pCar.fireTimer > 0 || pCar.punctured) {
         if (memo.enterCooldown === 0) {
           out.enter = true;

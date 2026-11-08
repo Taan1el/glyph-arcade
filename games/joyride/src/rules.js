@@ -655,7 +655,7 @@
   }
 
   function hurtPlayer(state, amount, source, events) {
-    if (state.player.hurtTimer > 0 || state.won) return;
+    if (state.player.hurtTimer > 0) return;
     const dealt = Math.max(1, Math.round(amount * DIFFICULTIES[state.difficulty].damage));
     state.player.hp -= dealt;
     state.player.hurtTimer = 0.6;
@@ -670,7 +670,14 @@
     const dealt = amount / spec.tough;
     car.hp = Math.max(0, car.hp - dealt);
     car.flash = 0.25;
-    if (car.hp <= 0) {
+    // The player's own car always burns first, so a lethal crash warns before it kills.
+    if (car.hp <= 0 && car.id === state.player.carId) {
+      car.hp = 1;
+      if (car.fireTimer <= 0) {
+        car.fireTimer = 2.4;
+        events.push({ type: 'carFire', carId: car.id, x: car.x, y: car.y });
+      }
+    } else if (car.hp <= 0) {
       explodeCar(state, car, events);
     } else if (car.hp < 15 && car.fireTimer <= 0) {
       car.fireTimer = 3.2;
@@ -1078,8 +1085,13 @@
 
       if (!state.player.carId && car.driver !== 'player') {
         const d = Math.hypot(state.player.x - car.x, state.player.y - car.y);
-        if (d < 1.05) {
+        if (d < 1.05 && state.player.hurtTimer <= 0) {
           hurtPlayer(state, Math.round(speed * 1.8), car.driver === 'police' ? 'police cruiser' : 'traffic', events);
+          // Knock the player clear like a pedestrian, so one car cannot pin and grind them down.
+          const pushAngle = Math.atan2(state.player.y - car.y, state.player.x - car.x);
+          const nx = state.player.x + Math.cos(pushAngle) * 1.1, ny = state.player.y + Math.sin(pushAngle) * 1.1;
+          if (!boxHitsSolid(state, nx, ny, 0.35)) { state.player.x = nx; state.player.y = ny; }
+          if (state.player.carId === null && state.player.hp > 0) state.player.hurtTimer = Math.max(state.player.hurtTimer, 1.0);
         }
       }
     }
@@ -1208,7 +1220,9 @@
       if (!blockedAhead && !state.player.carId) {
         const pdx = state.player.x - car.x, pdy = state.player.y - car.y;
         const ahead = pdx * fwdX + pdy * fwdY, side = Math.abs(-pdx * fwdY + pdy * fwdX);
-        if (ahead > 0.6 && ahead < 3.8 && side < 1.2) blockedAhead = true;
+        // Look far enough ahead to stop from the current speed, panicking or not.
+        const stopping = 1.4 + car.speed * car.speed / (2 * (CARS[car.kind] || CARS.sedan).brake);
+        if (ahead > 0.6 && ahead < Math.max(3.8, stopping) && side < 1.3) blockedAhead = true;
       }
 
       if (blockedAhead && car.honkTimer <= 0 && random(state) < 0.02) {
@@ -1230,9 +1244,10 @@
       stepCarPhysics(state, car, controls, dt, events);
     }
 
+    // A stalled car gets longer than a caught pedestrian to pull away, and the objective line warns.
     if (state.heat > 0 && closeCop) {
       state.bustTimer = (state.bustTimer || 0) + dt * (boxingPolice >= 2 ? 1.45 : 1.0);
-      if (state.bustTimer >= 1.1) {
+      if (state.bustTimer >= (pCar ? 2.0 : 1.1)) {
         state.bustTimer = 0;
         triggerBusted(state, events);
       }
@@ -1355,6 +1370,7 @@
       if (!state.garageTouched) {
         state.garageTouched = true;
         car.hp = car.maxHp;
+        car.fireTimer = 0;
         car.punctured = false;
         if (!state.storedCars.includes(car.kind) && state.storedCars.length < 3) {
           state.storedCars.push(car.kind);
@@ -1699,9 +1715,10 @@
   }
 
   function objective(state) {
-    if (state.won) return 'The Armoured Van is aboard the freighter. The town is yours.';
+
     const car = playerCar(state);
     if (car && car.fireTimer > 0) return 'CAR ON FIRE! Press E to bail out!';
+    if (state.bustTimer > 0.3) return car ? 'Police boxing you in! Keep moving!' : 'Police grabbing you! Run!';
 
     const pos = playerPos(state);
     const target = objectiveTarget(state);
@@ -1736,13 +1753,13 @@
       return `Taxi fare: drop passenger at marker (${Math.round(Math.hypot(dx, dy))}m ${compassDir(dx, dy)}, ${Math.ceil(state.taxiFare.timer)}s)`;
     }
     if (target) return `Answer payphone ($): ${target.label}${navSuffix}${prompt}`;
-    return `Explore the town, run taxi fares, or jump stunt ramps.${prompt}`;
+    return `${state.won ? 'Heist complete. ' : ''}Explore the town, run taxi fares, or jump stunt ramps.${prompt}`;
   }
 
   // --- Main step. input: { up, down, left, right, handbrake, enter, sprint, horn }
   function step(state, input = {}) {
     const events = [];
-    if (state.won) return events;
+    // Winning ends the story, while traffic and side activities remain playable.
     const dt = STEP;
     state.tick++;
     state.time += dt;
@@ -1778,9 +1795,12 @@
         }
       }
       stepCarPhysics(state, car, input, dt, events);
-      state.player.x = car.x;
-      state.player.y = car.y;
-      state.player.angle = car.angle;
+      // An explosion or drowning this step already moved the player out of the car.
+      if (state.player.carId === car.id) {
+        state.player.x = car.x;
+        state.player.y = car.y;
+        state.player.angle = car.angle;
+      }
       state.player.hurtTimer = Math.max(0, state.player.hurtTimer - dt);
     } else {
       stepPlayerOnFoot(state, input, dt, events);

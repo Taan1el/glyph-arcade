@@ -210,7 +210,7 @@
       click('new-run', () => this.newGame());
       click('continue', () => this.resume());
       click('how-to', () => this.show('help'));
-      click('help-back', () => this.show(this.state && !this.state.won ? 'pause' : 'title'));
+      click('help-back', () => this.show(this.state ? 'pause' : 'title'));
       click('resume-btn', () => this.show('play'));
       click('pause-map', () => this.show('map'));
       click('pause-help', () => this.show('help'));
