@@ -18,6 +18,7 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | **Bannerfall** | A single-player three-lane battle. Choose Warden, Ranger, Ember or Shade, escort waves, buy equipment and bring down the rival Banner. |
 | **Ricochet** | A 1v1 overhead neon disc court. Catch, charge, curve spin shots, bank off bumpers to break goal shields, and clear four tournament courts. |
 | **Lockwork** | A clockwork signal-routing puzzle across 30 ancient brass vaults. Slide copper conduits, turn mirrors, weight plates and sync pulse delays. |
+| **Irongrid** | A turn-based 8×8 tactical island game. Command three steam-walkers, draft 12 Command Cards, knock foes into hazards and defend civilian relays across four sectors. |
 | [Next Stop](https://github.com/Taan1el/next-stop) | A rural steam railway in coloured letters ([play](https://taan1el.github.io/next-stop/)). Lives in its own repository. |
 
 ## How to Play
@@ -106,6 +107,18 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | `Z` / `Backspace` · `R` | Undo step · Reset vault. |
 | `H` · `L` / `Tab` · `P` / `Esc` | Hint · Vault Select · Pause. |
 | Touch / gamepad | Tap/swipe vault or use pads; `A` rotates/waits, `B` undoes, `Y` resets on gamepad. |
+
+### Irongrid Controls
+
+| Key / Input | Action |
+|---|---|
+| Click / Tap | Select rig, click blue square to move, choose a card and click target (tap twice on touch to preview & confirm). |
+| `W A S D` / Arrow keys | Move tactical cursor across the 8×8 grid. |
+| `Space` / `Enter` | Confirm selection / move / card target at cursor. |
+| `1` / `2` / `3` / `4` | Select Command Card 1–4 (or draft reward 1–3 after battles). |
+| `Tab` / `Q` · `Z` / `Backspace` | Cycle ready rigs · Undo rig movement before casting a card. |
+| `E` · `P` / `Esc` | End Turn · Pause. |
+| Gamepad | Left stick / D-pad moves cursor, `A` confirm, `B` cancel/undo, `LB`/`RB` cycle rigs, `X`/`Y` cycle cards, `Start` pause. |
 
 ### Touch, gamepad and difficulty
 

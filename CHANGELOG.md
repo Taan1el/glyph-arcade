@@ -5,6 +5,7 @@ All notable changes to Glyph Arcade are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Irongrid (`games/irongrid/`)**: A turn-based tactical grid & deck-drafting game across four hazard sectors (`Rust Flats` supply train, `Flooded Quarry` collapsing dam, `Storm Ridge` lightning strikes, `The Hive Core` Brood Queen finale), featuring 3 steam-walker rigs (`Titan`, `Howitzer`, `Aegis`), 12 Command Cards, directional enemy telegraphs, knockback collisions/drowning, spawn fissure blocking, live action previews, and saved campaigns.
 - **Lockwork (`games/lockwork/`)**: A 30-vault clockwork signal-routing puzzle across five chapters (`Copper Hall`, `The Splitters`, `Phase Chambers`, `Chronos Works`, `Grand Mainspring`), with sliding conduits, rotatable mirrors and T-splitters, pressure gates, phase inverters, delay capacitors, pulse coils, dual-colour filters, unlimited undo, live BFS hints, and saved progress.
 - **Ricochet (`games/ricochet/`)**: A 1v1 overhead disc court sport on the shared engine across four tournament courts (`Foundry`, `Twin Pillar`, `Conveyor`, `Prism Finals`), four archetypes (`Striker`, `Spinner`, `Bastion`, `Phantom`), curve spin, wall bank speedups, frame-window parries, shield segments, bullseye pockets, and saved tournaments.
 - **Bannerfall (`games/bannerfall/`)**: A single-player glyph lane battler with four heroes, waves, towers, shops, jungle objectives and saved matches. Local development build; playtest evidence tracked separately.

@@ -298,6 +298,36 @@ const { pathToFileURL } = require('node:url');
     }
     if (errors.length) throw new Error(errors.join('\n'));
     console.log('PASS Lockwork boots, steps, pauses, saves and renders', JSON.stringify(lockOut));
+
+    // 10. Irongrid smoke check
+    await page.goto(pathToFileURL(path.join(__dirname, '../dist/irongrid.html')).href);
+    await page.waitForFunction(() => window.irongrid);
+    await page.click('#new-run');
+    await page.waitForTimeout(250);
+    const ironStart = await page.evaluate(() => ({ x: irongrid.state.rigs[0].x, y: irongrid.state.rigs[0].y, turn: irongrid.state.turn }));
+    await page.evaluate(() => {
+      const app = window.irongrid, R = window.IrongridRules;
+      const mv = R.reachableTiles(app.state, app.state.selectedRigId)[0];
+      if (mv) app.act({ confirmAt: mv });
+    });
+    await page.waitForTimeout(100);
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(100);
+    if (!await page.evaluate(() => irongrid.mode === 'pause')) throw new Error('Irongrid did not pause');
+    await page.click('#pause-title');
+    await page.click('#continue');
+    await page.waitForTimeout(200);
+    const ironOut = await page.evaluate(s => ({
+      mode: irongrid.mode,
+      moved: irongrid.state.rigs.some((r, idx) => idx === 0 && (r.x !== s.x || r.y !== s.y)),
+      turn: irongrid.state.turn,
+      cells: new Set(irongrid.view.inspect().glyphs).size
+    }), ironStart);
+    if (ironOut.mode !== 'play' || !ironOut.moved || ironOut.turn !== 1 || ironOut.cells < 6) {
+      throw new Error('Irongrid play/save/render check failed: ' + JSON.stringify(ironOut));
+    }
+    if (errors.length) throw new Error(errors.join('\n'));
+    console.log('PASS Irongrid boots, moves, pauses, saves and renders', JSON.stringify(ironOut));
   } finally {
     await browser.close();
   }

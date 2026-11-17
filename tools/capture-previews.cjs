@@ -188,6 +188,21 @@ const out = path.join(root, 'dist/previews');
     await page.screenshot({ path: path.join(out, 'lockwork.png') });
     console.log('Wrote dist/previews/lockwork.png');
 
+    // 9. Capture Irongrid preview
+    await page.goto(pathToFileURL(path.join(root, 'dist/irongrid.html')).href);
+    await page.waitForFunction(() => window.irongrid);
+    await page.evaluate(() => {
+      const R = window.IrongridRules, app = window.irongrid, state = R.newGame(2, 'normal');
+      app.begin(state);
+      app.selectCard(0);
+      app.mode = 'pause';
+      document.getElementById('pause').hidden = true;
+      document.getElementById('toast').classList.remove('visible');
+    });
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(out, 'irongrid.png') });
+    console.log('Wrote dist/previews/irongrid.png');
+
     // Rebuild launcher so dist/index.html embeds the newly generated preview images
     buildLauncher({ siteUrl: process.env.PAGES_URL || '' });
   } finally {
