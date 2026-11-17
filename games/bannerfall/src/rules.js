@@ -3,8 +3,11 @@
  * the player does not. Pure data in, events out, so tests and bots play whole matches. */
 (function (global) {
   'use strict';
+  const { Math, Object, Array, Number, String, Boolean, JSON, Map, Set, Uint8Array, Int16Array, Int32Array } = global;
+  const Infinity = 1 / 0;
 
-  const WIDTH = 96, HEIGHT = 64, STEP = 1 / 60;
+  const WIDTH = 96, HEIGHT = 64;
+  let STEP = 1 / 60;
   const T = { TREE: 0, GRASS: 1, LANE: 2, RIVER: 3, BASE: 4, PIT: 5 };
   const BASES = [{ x: 9, y: 55 }, { x: 87, y: 9 }];
   const BASE_RADIUS = 8;
@@ -23,7 +26,7 @@
   const ability = (key, name, text, cooldown, mana, range) => ({ key, name, text, cooldown, mana, range });
   const HEROES = {
     warden: {
-      name: 'Warden', role: 'Tank', letter: 'W', hp: 660, hpLevel: 88, mana: 260, damage: 30, damageLevel: 4, range: 1.7, rate: 0.95, speed: 5.1,
+      name: 'Warden', role: 'Tank', letter: 'W', hp: 740, hpLevel: 96, mana: 260, damage: 34, damageLevel: 4.5, range: 1.8, rate: 0.98, speed: 5.2,
       abilities: [
         ability('Q', 'Shield Bash', 'Bash the foes in front of you and stun them for a second.', 8, 50, 2.6),
         ability('W', 'Rally Shout', 'Gain a shield and force nearby foes to attack you.', 14, 70, 4.5),
@@ -32,25 +35,25 @@
       ]
     },
     ranger: {
-      name: 'Ranger', role: 'Marksman', letter: 'R', hp: 470, hpLevel: 70, mana: 260, damage: 29, damageLevel: 4.5, range: 6.5, rate: 0.9, speed: 5.3,
+      name: 'Ranger', role: 'Marksman', letter: 'R', hp: 438, hpLevel: 63, mana: 260, damage: 25, damageLevel: 3.8, range: 5.9, rate: 0.86, speed: 5.15,
       abilities: [
-        ability('Q', 'Piercing Arrow', 'Loose an arrow that passes through every foe in a line.', 7, 55, 12),
+        ability('Q', 'Piercing Arrow', 'Loose an arrow that passes through every foe in a line.', 8.5, 60, 11),
         ability('W', 'Snare Trap', 'Hide a trap that roots and hurts the first foe to step on it.', 9, 45, 7),
         ability('E', 'Tumble', 'Roll toward the cursor. Your next shot hits harder.', 8, 40, 4.5),
-        ability('R', 'Arrow Storm', 'Rain arrows on an area for three seconds, slowing foes.', 50, 120, 10)
+        ability('R', 'Arrow Storm', 'Rain arrows on an area for three seconds, slowing foes.', 52, 120, 10)
       ]
     },
     ember: {
-      name: 'Ember', role: 'Mage', letter: 'E', hp: 440, hpLevel: 66, mana: 320, damage: 23, damageLevel: 3, range: 5.5, rate: 0.8, speed: 5.1,
+      name: 'Ember', role: 'Mage', letter: 'E', hp: 410, hpLevel: 58, mana: 300, damage: 20, damageLevel: 2.6, range: 5.1, rate: 0.76, speed: 5.0,
       abilities: [
-        ability('Q', 'Fireball', 'Throw a fireball that bursts on the first foe it meets.', 6, 55, 9),
-        ability('W', 'Frost Field', 'Freeze the ground: foes inside are slowed and chilled.', 13, 75, 8),
+        ability('Q', 'Fireball', 'Throw a fireball that bursts on the first foe it meets.', 8.5, 65, 8.2),
+        ability('W', 'Frost Field', 'Freeze the ground: foes inside are slowed and chilled.', 15, 80, 7.5),
         ability('E', 'Blink', 'Vanish and reappear toward the cursor.', 11, 60, 6),
-        ability('R', 'Meteor', 'Call a meteor down on a marked area. It stuns as it lands.', 55, 140, 11)
+        ability('R', 'Meteor', 'Call a meteor down on a marked area. It stuns as it lands.', 60, 140, 10)
       ]
     },
     shade: {
-      name: 'Shade', role: 'Assassin', letter: 'S', hp: 520, hpLevel: 76, mana: 240, damage: 36, damageLevel: 5, range: 1.7, rate: 1.0, speed: 5.6,
+      name: 'Shade', role: 'Assassin', letter: 'S', hp: 550, hpLevel: 80, mana: 240, damage: 37, damageLevel: 5.2, range: 1.8, rate: 1.02, speed: 5.6,
       abilities: [
         ability('Q', 'Shadow Step', 'Dash to the cursor and cut every foe where you land.', 7, 50, 5),
         ability('W', 'Smoke', 'Turn invisible and quick for three seconds. Striking reveals you.', 16, 60, 0),
@@ -209,6 +212,7 @@
 
   function blocked(state, map, x, y, team) {
     if (!walkableTile(tileAt(map, x, y))) return true;
+    if (!state.hasWall) return false;
     for (const e of state.effects) {
       if (e.kind !== 'wall' || e.team === team) continue;
       const i = Math.floor(y) * WIDTH + Math.floor(x);
@@ -217,16 +221,29 @@
     return false;
   }
   function clearLine(state, map, x0, y0, x1, y1, team, limit = 7) {
-    const d = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(Math.min(d, limit) / 0.4);
+    const d = Math.hypot(x1 - x0, y1 - y0);
+    if (d < 0.01) return true;
+    const reach = Math.min(d, limit), n = Math.ceil(reach / 0.5);
     for (let i = 1; i <= n; i++) {
-      const t = Math.min(d, limit) / d * i / n;
+      const t = reach / d * i / n;
       if (blocked(state, map, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, team)) return false;
     }
     return true;
   }
-  // Breadth-first distances to a goal tile, cached per map.
+  const BFS_QUEUE = new Int32Array(WIDTH * HEIGHT);
+  // Breadth-first distances to a goal tile, cached per map on a 2x2 coarse goal key.
   function flowTo(map, gx, gy) {
-    let goal = clamp(Math.floor(gy), 0, HEIGHT - 1) * WIDTH + clamp(Math.floor(gx), 0, WIDTH - 1);
+    const tx = clamp(Math.floor(gx), 0, WIDTH - 1) & ~1;
+    const ty = clamp(Math.floor(gy), 0, HEIGHT - 1) & ~1;
+    const rawGoal = ty * WIDTH + tx;
+    let field = map.flows.get(rawGoal);
+    if (field) return field;
+    let goal = rawGoal;
+    if (!walkableTile(map.tiles[goal])) {
+      goal = clamp(Math.floor(gy), 0, HEIGHT - 1) * WIDTH + clamp(Math.floor(gx), 0, WIDTH - 1);
+      field = map.flows.get(goal);
+      if (field) { map.flows.set(rawGoal, field); return field; }
+    }
     if (!walkableTile(map.tiles[goal])) {
       let best = goal, bestD = Infinity;
       for (let i = 0; i < map.tiles.length; i++) {
@@ -235,27 +252,22 @@
         if (d < bestD) { bestD = d; best = i; }
       }
       goal = best;
+      field = map.flows.get(goal);
+      if (field) { map.flows.set(rawGoal, field); return field; }
     }
-    let field = map.flows.get(goal);
-    if (field) return field;
     field = new Int16Array(WIDTH * HEIGHT).fill(-1);
-    const queue = new Int32Array(WIDTH * HEIGHT);
     let head = 0, tail = 0;
     field[goal] = 0;
-    queue[tail++] = goal;
+    BFS_QUEUE[tail++] = goal;
     while (head < tail) {
-      const i = queue[head++], x = i % WIDTH, y = (i - x) / WIDTH;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = x + dx, ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= WIDTH || ny >= HEIGHT) continue;
-        const j = ny * WIDTH + nx;
-        if (field[j] >= 0 || !walkableTile(map.tiles[j])) continue;
-        field[j] = field[i] + 1;
-        queue[tail++] = j;
-      }
+      const i = BFS_QUEUE[head++], x = i % WIDTH, y = (i - x) / WIDTH, nextD = field[i] + 1;
+      if (x + 1 < WIDTH) { const j = i + 1; if (field[j] < 0 && walkableTile(map.tiles[j])) { field[j] = nextD; BFS_QUEUE[tail++] = j; } }
+      if (x > 0) { const j = i - 1; if (field[j] < 0 && walkableTile(map.tiles[j])) { field[j] = nextD; BFS_QUEUE[tail++] = j; } }
+      if (y + 1 < HEIGHT) { const j = i + WIDTH; if (field[j] < 0 && walkableTile(map.tiles[j])) { field[j] = nextD; BFS_QUEUE[tail++] = j; } }
+      if (y > 0) { const j = i - WIDTH; if (field[j] < 0 && walkableTile(map.tiles[j])) { field[j] = nextD; BFS_QUEUE[tail++] = j; } }
     }
-    if (map.flows.size > 160) map.flows.clear();
     map.flows.set(goal, field);
+    map.flows.set(rawGoal, field);
     return field;
   }
   // The farthest point along the shortest path that can be walked to in a straight line.
@@ -291,6 +303,7 @@
     const spec = HEROES[kind], spot = baseSpot(team, lane);
     const h = makeUnit(state, 'hero', team, spot.x, spot.y, {
       kind, lane, player: Boolean(isPlayer), r: 0.6, sight: 11, level: 1, xp: 0, gold: 450, items: [], cooldowns: [0, 0, 0, 0],
+      ranks: [1, 1, 1, 0], skillPoints: 0,
       dead: 0, kills: 0, deaths: 0, assists: 0, cs: 0, streak: 0, recall: 0, order: null, invisible: 0, haste: 0, taunt: null, tauntTime: 0,
       venom: 0, empower: 0, potion: 0, damagedBy: {}, think: 0, mana: spec.mana, maxMana: spec.mana, towerHeat: 0, dash: null
     });
@@ -299,6 +312,28 @@
     h.mana = h.maxMana;
     return h;
   }
+  function rankUp(h, slot) {
+    if (!h || h.skillPoints <= 0 || slot < 0 || slot > 3) return false;
+    if (slot === 3 && h.level < 6) return false;
+    const maxRank = slot === 3 ? 2 : 4;
+    if ((h.ranks?.[slot] || 0) >= maxRank) return false;
+    h.ranks[slot] = (h.ranks[slot] || 0) + 1;
+    h.skillPoints--;
+    refreshStats(h);
+    return true;
+  }
+  function autoRankHero(h) {
+    if (!h.ranks) h.ranks = [1, 1, 1, h.level >= 6 ? 1 : 0];
+    if (h.level >= 6 && h.ranks[3] === 0) {
+      h.ranks[3] = 1;
+      if (h.skillPoints > 0) h.skillPoints--;
+    }
+    while (h.skillPoints > 0) {
+      const order = h.level >= 6 ? [3, 0, 1, 2] : [0, 1, 2];
+      const pick = order.find(s => h.ranks[s] < (s === 3 ? 2 : 4));
+      if (pick === undefined || !rankUp(h, pick)) break;
+    }
+  }
   function baseSpot(team, lane) {
     const b = BASES[team], angle = (team === 0 ? -Math.PI / 4 : Math.PI * 3 / 4) + (lane - 1) * 0.7;
     return { x: b.x + Math.cos(angle) * 2.5, y: b.y + Math.sin(angle) * 2.5 };
@@ -306,7 +341,11 @@
   function refreshStats(h) {
     const spec = HEROES[h.kind], before = h.maxHp || 0, manaBefore = h.maxMana || 0;
     let hp = spec.hp + spec.hpLevel * (h.level - 1), damage = spec.damage + spec.damageLevel * (h.level - 1), mana = spec.mana + 20 * (h.level - 1);
-    let rate = 0, speed = 0, lifesteal = 0, armour = 0, cdr = 0, power = 1;
+    let rate = 0, speed = 0, lifesteal = 0, armour = spec.range < 2.5 ? 0.1 : 0, cdr = 0, power = 1;
+    if (h.ranks) {
+      const extraRanks = Math.max(0, (h.ranks[0] - 1) + (h.ranks[1] - 1) + (h.ranks[2] - 1) + Math.max(0, h.ranks[3] - 1));
+      power += extraRanks * 0.06;
+    }
     for (const id of h.items) {
       const item = ITEMS[id];
       hp += item.hp || 0; damage += item.damage || 0; mana += item.mana || 0; rate += item.rate || 0; speed += item.speed || 0;
@@ -317,6 +356,14 @@
     h.mana = Math.min(h.maxMana, (h.mana || 0) + Math.max(0, h.maxMana - manaBefore));
   }
   const xpNeed = level => 120 + 70 * level;
+
+  function attachGetters(state) {
+    Object.defineProperties(state, {
+      player: { get() { return playerHero(this); }, configurable: true },
+      towers: { get() { return this.units.filter(u => u.type === 'tower'); }, configurable: true }
+    });
+    return state;
+  }
 
   function newGame(seed = 'bannerfall', heroKind = 'warden', difficulty = 'normal') {
     seed = String(seed);
@@ -330,8 +377,10 @@
     mapFor(seed);
     // The player takes mid; the other heroes are dealt from the rest of the roster.
     const others = HERO_KINDS.filter(kind => kind !== heroKind);
+    const bDrop = hash(seed + ':b') % others.length;
+    const blueAllies = others.filter((_, i) => i !== bDrop);
     const rivals = HERO_KINDS.filter((_, i) => i !== hash(seed) % 4);
-    const blue = [others[0], heroKind, others[1]];
+    const blue = [blueAllies[0], heroKind, blueAllies[1]];
     for (let lane = 0; lane < 3; lane++) {
       const h = makeHero(state, blue[lane], 0, lane, lane === 1);
       state.units.push(h);
@@ -347,7 +396,7 @@
       state.units.push(makeUnit(state, 'banner', team, b.x, b.y, { r: 1.4, hp: 5000, maxHp: 5000, range: 7, sight: 12, rate: 0.75, streak: 0 }));
     }
     for (const [i] of CAMPS.entries()) spawnCamp(state, i);
-    return state;
+    return attachGetters(state);
   }
   function spawnCamp(state, i) {
     const camp = CAMPS[i];
@@ -390,6 +439,7 @@
   function nearestFoe(state, from, range, filter) {
     let best = null, bestD = range;
     for (const u of state.units) {
+      if (Math.abs(u.x - from.x) > bestD + 1.6 || Math.abs(u.y - from.y) > bestD + 1.6) continue;
       if (!targetable(state, u, from.team) || (filter && !filter(u))) continue;
       const d = dist(from, u) - u.r;
       if (d < bestD) { bestD = d; best = u; }
@@ -414,9 +464,18 @@
     if (d <= close) return true;
     if (u.root > 0 || u.stun > 0) return false;
     let tx = gx, ty = gy;
-    if (!clearLine(state, map, u.x, u.y, gx, gy, u.team)) {
-      const via = pathStep(state, map, u, gx, gy);
-      if (via) { tx = via.x; ty = via.y; }
+    if (u._repath > 0 && Math.abs(gx - u._gx) + Math.abs(gy - u._gy) < 0.6 && u._via) {
+      u._repath--;
+      tx = u._via.x;
+      ty = u._via.y;
+    } else if (u._repath > 0 && Math.abs(gx - u._gx) + Math.abs(gy - u._gy) < 0.6 && !u._via) {
+      u._repath--;
+    } else {
+      u._repath = 5;
+      u._gx = gx;
+      u._gy = gy;
+      u._via = !clearLine(state, map, u.x, u.y, gx, gy, u.team) ? pathStep(state, map, u, gx, gy) : null;
+      if (u._via) { tx = u._via.x; ty = u._via.y; }
     }
     const length = Math.hypot(tx - u.x, ty - u.y) || 1, stride = Math.min(d - close * 0.5, speedOf(u) * STEP);
     slide(state, map, u, (tx - u.x) / length * stride, (ty - u.y) / length * stride);
@@ -480,6 +539,8 @@
     while (h.level < 10 && h.xp >= xpNeed(h.level)) {
       h.xp -= xpNeed(h.level);
       h.level++;
+      h.skillPoints = (h.skillPoints || 0) + 1;
+      autoRankHero(h);
       refreshStats(h);
       h.hp = Math.min(h.maxHp, h.hp + h.maxHp * 0.1);
       emit(state, events, { type: 'level', id: h.id, level: h.level, x: h.x, y: h.y });
@@ -563,8 +624,8 @@
     } else u.cd = 1 / u.rate;
     if (u.type === 'minion' && u.kind === 'siege' && structure(target)) damage *= 1.8;
     // Structures shrug off early pushes; late waves hit them harder and harder.
-    if (u.type === 'minion' && structure(target)) damage *= 0.6 + minute(state) * 0.06;
-    if (u.type === 'hero' && structure(target)) damage *= 0.5;
+    if (u.type === 'minion' && structure(target)) damage *= 0.8 + minute(state) * 0.09 + (state.buff[u.team] > 0 ? 0.35 : 0);
+    if (u.type === 'hero' && structure(target)) damage *= 0.7 + Math.min(0.8, minute(state) * 0.05);
     u.facing = target.x < u.x ? -1 : 1;
     u.anim = 0.2;
     if (u.range >= 3) {
@@ -578,8 +639,8 @@
   }
   function landHit(state, source, target, damage, venom, events) {
     if (structure(source)) {
-      // Towers break minions in a few shots and hit heroes harder each time.
-      if (target.type === 'minion') damage = target.maxHp * (target.kind === 'siege' ? 0.2 : 0.42);
+      // Towers break early minions in a few shots while late/Colossus-buffed minions endure longer; heroes take escalating shots.
+      if (target.type === 'minion') damage = MINIONS[target.kind].hp * (target.kind === 'siege' ? 0.2 : 0.42);
       else {
         source.streak = source.lastTarget === target.id ? source.streak + 1 : 0;
         source.lastTarget = target.id;
@@ -651,11 +712,11 @@
     warden: [
       (state, map, h, aim, events) => {
         const hit = foesIn(state, h.team, h.x + aim.dx * 1.2, h.y + aim.dy * 1.2, 2.2);
-        for (const u of hit) hurt(state, u, abilityDamage(h, 55, 18), h, events, { ability: true });
+        for (const u of hit) hurt(state, u, abilityDamage(h, 65, 22), h, events, { ability: true });
         stunFoes(hit, 1.0);
       },
       (state, map, h) => {
-        h.shield = 110 + 28 * h.level;
+        h.shield = 135 + 34 * h.level;
         h.shieldTime = 4;
         for (const u of foesIn(state, h.team, h.x, h.y, 4.5)) {
           if (u.type === 'hero') { u.taunt = h.id; u.tauntTime = 1.4; }
@@ -681,7 +742,7 @@
         const length = HEROES.ranger.abilities[0].range;
         for (const u of foesIn(state, h.team, h.x + aim.dx * length / 2, h.y + aim.dy * length / 2, length / 2 + 1)) {
           const along = (u.x - h.x) * aim.dx + (u.y - h.y) * aim.dy, across = Math.abs((u.x - h.x) * aim.dy - (u.y - h.y) * aim.dx);
-          if (along > 0 && along < length && across < 0.9 + u.r) hurt(state, u, abilityDamage(h, 70, 24), h, events, { ability: true });
+          if (along > 0 && along < length && across < 0.9 + u.r) hurt(state, u, abilityDamage(h, 50, 15), h, events, { ability: true });
         }
         state.effects.push({ kind: 'streak', team: h.team, x: h.x, y: h.y, dx: aim.dx, dy: aim.dy, r: length, ttl: 0.25, time: 0 });
       },
@@ -766,13 +827,13 @@
         const d = Math.hypot(e.tx - e.x, e.ty - e.y), stride = 20 * STEP;
         const touched = foesIn(state, e.team, e.x, e.y, 0.7)[0];
         if (touched || d <= stride) {
-          for (const u of foesIn(state, e.team, e.x, e.y, e.r)) hurt(state, u, abilityDamage(owner, 80, 28), owner, events, { ability: true });
+          for (const u of foesIn(state, e.team, e.x, e.y, e.r)) hurt(state, u, abilityDamage(owner, 52, 16), owner, events, { ability: true });
           emit(state, events, { type: 'burst', x: e.x, y: e.y, r: e.r, kind: 'fire' });
           e.ttl = 0;
         } else { e.x += (e.tx - e.x) / d * stride; e.y += (e.ty - e.y) / d * stride; }
       } else if (e.kind === 'meteor' && e.ttl <= 0) {
         const hit = foesIn(state, e.team, e.x, e.y, e.r);
-        for (const u of hit) hurt(state, u, abilityDamage(owner, 250, 55), owner, events, { ability: true });
+        for (const u of hit) hurt(state, u, abilityDamage(owner, 175, 36), owner, events, { ability: true });
         stunFoes(hit, 1);
         emit(state, events, { type: 'burst', x: e.x, y: e.y, r: e.r, kind: 'meteor' });
       }
@@ -883,7 +944,18 @@
       if (caller && targetable(state, caller, m.team) && dist(m, caller) < 7) target = caller;
     }
     // Minions fight minions first, then structures, and turn on heroes only when nothing else is near.
-    if (!target) target = nearestFoe(state, m, 5.5, u => u.type === 'minion') || nearestFoe(state, m, 5.5, structure) || nearestFoe(state, m, 4.5, u => u.type === 'hero');
+    if (!target) {
+      let bestMinion = null, bestMinionD = 5.5, bestStruct = null, bestStructD = 5.5, bestHero = null, bestHeroD = 4.5;
+      for (const u of state.units) {
+        if (Math.abs(u.x - m.x) > 7 || Math.abs(u.y - m.y) > 7) continue;
+        if (!targetable(state, u, m.team)) continue;
+        const d = dist(m, u) - u.r;
+        if (u.type === 'minion' && d < bestMinionD) { bestMinionD = d; bestMinion = u; }
+        else if (structure(u) && d < bestStructD) { bestStructD = d; bestStruct = u; }
+        else if (u.type === 'hero' && d < bestHeroD) { bestHeroD = d; bestHero = u; }
+      }
+      target = bestMinion || bestStruct || bestHero;
+    }
     if (target) {
       m.target = target.id;
       if (inReach(m, target)) { if (m.cd <= 0) swing(state, m, target, events); }
@@ -935,6 +1007,8 @@
     if (h.potion > 0) { h.potion -= STEP; h.hp = Math.min(h.maxHp, h.hp + 32.5 * STEP); }
 
     const command = h.player && !input.auto ? input : think(state, map, h);
+    if (h.player && input.auto && h.skillPoints > 0) autoRankHero(h);
+    if (command.rankUp !== undefined) rankUp(h, command.rankUp);
     if (command.buy) buy(state, h, command.buy, events);
     if (command.order !== undefined) { h.order = command.order; if (h.order) h.recall = 0; }
     const direct = (command.moveX || command.moveY) && h.player;
@@ -998,7 +1072,11 @@
     return best ? { unit: best, along: bestAlong } : null;
   }
   function holdPoint(state, team, lane) {
-    // The foremost standing tower of this team in this lane, or the base.
+    // Advance the hold point as enemy towers in this lane fall so pushes do not reset to home base.
+    const foeTowers = state.units.filter(t => t.type === 'tower' && t.team !== team && t.lane === lane && alive(t)).length;
+    const len = LANE_LENGTHS[lane];
+    if (foeTowers === 0) return lanePoint(lane, team === 0 ? len - 22 : 22);
+    if (foeTowers === 1) return lanePoint(lane, len * 0.5);
     const towers = state.units.filter(t => t.type === 'tower' && t.team === team && t.lane === lane && alive(t)).sort((a, b) => a.order - b.order);
     const anchor = towers[0];
     if (!anchor) return { ...BASES[team] };
@@ -1042,24 +1120,32 @@
     const next = BUILDS[h.kind][h.items.length];
     if (next && h.gold >= ITEMS[next].cost + 350 && !foeHeroes.length && !atBase(h, 4) && random(state) < 0.3) { command.recall = true; command.order = null; return command; }
 
-    const lane = minute(state) >= 12 ? groupLane(state, h.team) : h.lane;
+    const lane = minute(state) >= 10 ? groupLane(state, h.team) : h.lane;
     const tower = enemyTowerNear(state, h);
     const towerTarget = tower ? unitById(state, tower.target) : null;
     const unsafe = tower && (towerTarget === h || !state.units.some(m => m.type === 'minion' && m.team === h.team && alive(m) && dist(m, tower) < tower.range));
 
-    // Fight a hero when the trade looks good.
+    // If an exposed enemy structure has minions tanking it, focus it down unless an enemy hero is right on top of us.
     const prey = foeHeroes.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+    if (tower && !unsafe && !isProtected(state, tower) && (!towerTarget || towerTarget.type === 'minion')) {
+      if (!prey || (dist(prey, h) > 3.5 && prey.hp / prey.maxHp > 0.25)) {
+        command.order = { kind: 'attack', id: tower.id };
+        return command;
+      }
+    }
+
+    // Fight a hero when the trade looks good.
     if (prey) {
       const preyRatio = prey.hp / prey.maxHp, preyTower = enemyTowerNear(state, prey, 0.5);
-      // Commit only with a real edge; otherwise trade blows with abilities while farming.
+      // Commit only with a real edge; never poke under an enemy tower (which draws tower aggro).
       const edge = preyRatio < hpRatio - 0.2 || preyRatio < 0.3 || friends.length > foeHeroes.length - 1 + (preyRatio > 0.6 ? 1 : 0);
-      const good = edge && !(preyTower && (hpRatio < 0.6 || preyRatio > 0.25));
+      const good = edge && !tower && !(preyTower && (hpRatio < 0.6 || preyRatio > 0.25));
       if (good && !unsafe) {
         command.order = { kind: 'attack', id: prey.id };
         if (random(state) < brain.ability) fightCast(state, h, brain, prey, command);
         return command;
       }
-      if (!unsafe && h.mana > h.maxMana * 0.45 && random(state) < brain.ability * 0.35) fightCast(state, h, brain, prey, command, false, true);
+      if (!unsafe && !tower && !preyTower && h.mana > h.maxMana * 0.45 && random(state) < brain.ability * 0.35) fightCast(state, h, brain, prey, command, false, true);
       if (dist(prey, h) < 5 && preyRatio > hpRatio + 0.2) {
         command.order = { kind: 'move', ...holdPoint(state, h.team, lane) };
         retreatCast(state, h, brain, prey, command);
@@ -1094,7 +1180,7 @@
       const ripe = brain.lastHit ? minions.filter(m => m.hp <= h.damage * 1.05).sort((a, b) => dist(a, h) - dist(b, h))[0] : null;
       const target = ripe || minions.sort((a, b) => dist(a, h) - dist(b, h))[0];
       command.order = { kind: 'attack', id: target.id };
-      if (minions.length >= 4 && h.mana > h.maxMana * 0.7 && random(state) < brain.ability * 0.25) fightCast(state, h, brain, target, command, true);
+      if (minions.length >= 4 && !tower && h.mana > h.maxMana * 0.7 && random(state) < brain.ability * 0.25) fightCast(state, h, brain, target, command, true);
       return command;
     }
     // Neutral camps on the way, for the junglers' gold, when the lane is empty.
@@ -1104,7 +1190,7 @@
       if (beast) { command.order = { kind: 'attack', id: beast.id }; return command; }
     }
     // Walk with the wave, a little behind its front.
-    const spot = front ? lanePoint(lane, front.along + (h.team === 0 ? -2.5 : 2.5)) : holdPoint(state, h.team, lane);
+    const spot = front ? lanePoint(lane, front.along + (h.team === 0 ? -2.2 : 2.2)) : holdPoint(state, h.team, lane);
     command.order = dist(spot, h) > 1.2 ? { kind: 'move', ...spot } : null;
     return command;
   }
@@ -1122,10 +1208,10 @@
     const error = brain.aim;
     return { x: target.x + (random(state) - 0.5) * error * 2, y: target.y + (random(state) - 0.5) * error * 2 };
   }
-  // poke: only the safe, ranged abilities, never the ultimate or a dash into the enemy.
+  // poke: safe trades in lane; melee heroes use shields or gap-closers when healthy.
   function fightCast(state, h, brain, target, command, farming = false, poke = false) {
     const d = dist(h, target), aim = aimAt(state, brain, target), enemyHero = target.type === 'hero';
-    const ready = slot => canCast(h, slot) && (!poke || (slot === 0 && h.kind !== 'warden' && h.kind !== 'shade'));
+    const ready = slot => canCast(h, slot) && (!poke || slot < 3);
     const choose = (slot, x = aim.x, y = aim.y) => { command.cast = { slot, x, y }; };
     switch (h.kind) {
       case 'warden':
@@ -1134,8 +1220,8 @@
           return choose(3, away.x, away.y);
         }
         if (ready(0) && d < 2.6) return choose(0);
-        if (enemyHero && ready(2) && d > 2.5 && d < 6.5) return choose(2);
-        if (ready(1) && d < 4 && (enemyHero || farming)) return choose(1);
+        if (enemyHero && ready(2) && d > 2.5 && d < 6.5 && (!poke || h.hp > h.maxHp * 0.65)) return choose(2);
+        if (ready(1) && d < 5.5 && (enemyHero || farming)) return choose(1);
         break;
       case 'ranger':
         if (enemyHero && ready(3) && d < 10) return choose(3);
@@ -1151,7 +1237,7 @@
         if (enemyHero && ready(3) && d < 4.5 && target.hp / target.maxHp < 0.5) return choose(3, target.x, target.y);
         if (enemyHero && ready(1) && d > 3 && d < 8) return choose(1);
         if (ready(2) && d < 3) return choose(2);
-        if (ready(0) && d < 5 && (enemyHero || farming)) return choose(0);
+        if (ready(0) && d < 5 && (enemyHero || farming) && (!poke || h.hp > h.maxHp * 0.7)) return choose(0);
         break;
     }
   }
@@ -1173,7 +1259,9 @@
     for (let i = 0; i < movers.length; i++) for (let j = i + 1; j < movers.length; j++) {
       const a = movers[i], b = movers[j];
       if (a.team !== b.team) continue;
-      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), want = (a.r + b.r) * 0.85;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      if (Math.abs(dx) > 1.1 || Math.abs(dy) > 1.1) continue;
+      const d = Math.hypot(dx, dy), want = (a.r + b.r) * 0.85;
       if (d >= want || d < 0.001) continue;
       const push = (want - d) * 0.25, nx = dx / d * push, ny = dy / d * push;
       if (a.type === 'minion') slide(state, map, a, -nx, -ny);
@@ -1181,12 +1269,15 @@
     }
   }
 
-  function step(state, input = {}) {
+  function step(state, input = {}, dt = 1 / 60) {
     const events = [];
     if (state.status !== 'play') return events;
+    const prevStep = STEP;
+    STEP = dt;
     const map = mapFor(state.seed);
     state.tick++;
-    state.time = state.tick * STEP;
+    state.time = dt === 1 / 60 ? state.tick * STEP : state.time + dt;
+    state.hasWall = state.effects.some(e => e.kind === 'wall');
     for (let team = 0; team < 2; team++) state.buff[team] = Math.max(0, state.buff[team] - STEP);
     state.nextWave -= STEP;
     if (state.nextWave <= 0) { spawnWave(state, events); state.nextWave += WAVE_EVERY; }
@@ -1197,9 +1288,32 @@
     stepNeutrals(state, map, events);
     stepProjectiles(state, events);
     stepEffects(state, map, events);
-    if (state.tick % 2 === 0) separate(state, map);
+    if (state.tick % 4 === 0) separate(state, map);
+    if (state.tick % 360 === 0) stepAllyPings(state, events);
     state.units = state.units.filter(u => alive(u) || u.type === 'hero' || structure(u));
+    STEP = prevStep;
     return events;
+  }
+
+  function stepAllyPings(state, events) {
+    const ally = state.units.find(u => u.type === 'hero' && u.team === 0 && !u.player && alive(u));
+    if (!ally) return;
+    const colossus = state.units.find(u => u.type === 'colossus' && alive(u));
+    if (colossus && state.time - (state.lastColossusPing || 0) > 45) {
+      state.lastColossusPing = state.time;
+      emit(state, events, { type: 'ping', team: 0, x: colossus.x, y: colossus.y, log: `${HEROES[ally.kind].name}: Colossus up in the river!` });
+      return;
+    }
+    for (const t of state.units) {
+      if (t.type !== 'tower' || t.team !== 0 || !alive(t) || t.hp > t.maxHp * 0.75) continue;
+      const foeNear = state.units.some(u => u.team === 1 && alive(u) && dist(u, t) < 8);
+      const allyNear = state.units.some(u => u.type === 'hero' && u.team === 0 && alive(u) && dist(u, t) < 10);
+      if (foeNear && !allyNear && state.time - (state.lastHelpPing || 0) > 35) {
+        state.lastHelpPing = state.time;
+        emit(state, events, { type: 'ping', team: 0, x: t.x, y: t.y, log: `${HEROES[ally.kind].name}: Help ${LANE_NAMES[t.lane]}!` });
+        return;
+      }
+    }
   }
 
   // --- Reading the match
@@ -1243,7 +1357,10 @@
     }
     return out;
   }
-  function save(state) { return JSON.stringify(state); }
+  function save(state) {
+    const { hasWall, lastColossusPing, lastHelpPing, ...clean } = state;
+    return JSON.stringify(clean);
+  }
   function restore(text) {
     const data = typeof text === 'string' ? JSON.parse(text) : JSON.parse(JSON.stringify(text));
     const ok = data && data.version === 1 && typeof data.seed === 'string' && HEROES[data.heroKind] && DIFFICULTIES[data.difficulty] &&
@@ -1251,11 +1368,11 @@
       data.units.every(u => u && Number.isFinite(u.x) && Number.isFinite(u.y) && Number.isFinite(u.hp) && u.maxHp > 0) &&
       data.units.filter(u => u.type === 'hero').length === 6 && data.units.filter(u => u.type === 'tower').length === 12 && data.units.some(u => u.id === data.playerId && u.player);
     if (!ok) throw new Error('Saved match is not a Bannerfall match.');
-    return data;
+    return attachGetters(data);
   }
 
   global.Bannerfall = {
     WIDTH, HEIGHT, STEP, T, BASES, BASE_RADIUS, LANES, LANE_NAMES, LANE_LENGTHS, CAMPS, PIT, HEROES, HERO_KINDS, ITEMS, SLOTS, BUILDS, DIFFICULTIES, MINIONS, TEAM_NAMES, RECALL_TIME, COLOSSUS_AT,
-    newGame, step, mapFor, tileAt, lanePoint, laneProject, objective, score, vision, save, restore, unitById, playerHero, heroes, atBase, isProtected, alive, canCast, xpNeed, refreshStats, walkableTile
+    newGame, step, mapFor, tileAt, lanePoint, laneProject, objective, score, vision, save, restore, unitById, playerHero, heroes, atBase, isProtected, alive, canCast, rankUp, xpNeed, refreshStats, walkableTile
   };
 })(typeof window !== 'undefined' ? window : globalThis);

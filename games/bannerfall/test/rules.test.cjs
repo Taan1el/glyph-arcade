@@ -5,9 +5,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { playRun, playAi } = require('./bot.cjs');
 
-const box = vm.createContext({});
-vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/rules.js'), 'utf8') + '\nthis.B = Bannerfall;', box);
-const B = box.B, { T } = B;
+vm.runInThisContext(fs.readFileSync(path.join(__dirname, '../src/rules.js'), 'utf8'));
+const B = globalThis.Bannerfall, { T } = B;
 let count = 0;
 function test(name, run) { run(); count++; console.log('PASS ' + name); }
 const tick = (state, input = {}, frames = 1) => { const events = []; for (let i = 0; i < frames; i++) events.push(...B.step(state, input)); return events; };
@@ -334,10 +333,34 @@ test('Objectives always name the next step', () => {
   assert.match(B.objective(state), /banner is exposed/);
 });
 
-test('AI-only matches end with a winner inside 25 minutes', () => {
-  const runs = ['m1', 'm2', 'm3'].map((seed, i) => playAi(B, seed, B.HERO_KINDS[i], 'normal'));
-  console.log('   ' + runs.map(r => `${r.state.status} ${r.minutes.toFixed(1)}m ${r.state.kills.join(':')}`).join(' | '));
-  for (const r of runs) assert.notEqual(r.state.status, 'play', 'every match ended');
+test('AI-only matches end with a winner inside 25 minutes and no single hero wins more than 70% across 20 matches', () => {
+  const leadWins = Object.fromEntries(B.HERO_KINDS.map(k => [k, 0]));
+  const leadTotal = Object.fromEntries(B.HERO_KINDS.map(k => [k, 0]));
+  const appWins = Object.fromEntries(B.HERO_KINDS.map(k => [k, 0]));
+  const appTotal = Object.fromEntries(B.HERO_KINDS.map(k => [k, 0]));
+  const runs = [];
+  for (let i = 0; i < 20; i++) {
+    const hero = B.HERO_KINDS[i % B.HERO_KINDS.length];
+    const r = playAi(B, 'm' + (i + 1), hero, 'normal');
+    runs.push(r);
+    assert.notEqual(r.state.status, 'play', `AI match m${i + 1} ended`);
+    assert(r.minutes <= 25, `AI match m${i + 1} ended within 25 minutes (${r.minutes.toFixed(1)}m)`);
+    leadTotal[hero]++;
+    if (r.won) leadWins[hero]++;
+    const winningTeam = r.won ? 0 : 1;
+    for (const h of B.heroes(r.state)) {
+      appTotal[h.kind]++;
+      if (h.team === winningTeam) appWins[h.kind]++;
+    }
+  }
+  const appRates = B.HERO_KINDS.map(k => `${k}:${appWins[k]}/${appTotal[k]} (${Math.round(appWins[k] / appTotal[k] * 100)}%)`);
+  const leadRates = B.HERO_KINDS.map(k => `${k}:${leadWins[k]}/${leadTotal[k]} (${Math.round(leadWins[k] / leadTotal[k] * 100)}%)`);
+  const meanMin = (runs.reduce((s, r) => s + r.minutes, 0) / runs.length).toFixed(1);
+  console.log(`   20 AI matches (mean ${meanMin}m) hero win rates: ${appRates.join(' | ')} (lead: ${leadRates.join(' | ')})`);
+  for (const k of B.HERO_KINDS) {
+    assert(appWins[k] / appTotal[k] <= 0.7, `${k} appearance win rate ${appWins[k]}/${appTotal[k]} exceeds 70%`);
+    assert(leadWins[k] / leadTotal[k] <= 0.7, `${k} lead win rate ${leadWins[k]}/${leadTotal[k]} exceeds 70%`);
+  }
 });
 
 test('A plain-input bot beats Easy rivals with every hero', () => {
