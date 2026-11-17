@@ -1,0 +1,165 @@
+<!doctype html>
+<!--__LICENSE__-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Lockwork · Clockwork signal vaults in letters</title>
+<!--__META__-->
+<style>
+:root{--ink:#efe4cc;--muted:#ab9a7a;--gold:#ffd447;--cyan:#4ce8ff;--copper:#d97a38;--panel:#18130eeb;--line:#6c542c;font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#0c0906;--safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px)}
+html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;overflow:hidden;background:#0c0906}
+body.touch{touch-action:none}
+[hidden]{display:none!important}
+#view{display:block;width:100vw;height:100vh;height:100dvh;touch-action:none;cursor:pointer}
+button,select{font:inherit;cursor:pointer;background:#2a2014;color:var(--ink);border:1px solid #8a6c3a;padding:9px 14px;border-radius:2px;min-height:44px}
+button:hover:not(:disabled),button:focus-visible,select:focus-visible{background:#3c2e1c;outline:2px solid var(--gold);outline-offset:1px}
+button:disabled{cursor:default;opacity:.55}
+button.primary{background:var(--gold);color:#1d1506;border-color:#ffea9a;font-weight:bold}
+button.small{padding:4px 7px;font:11px "Courier New",monospace;min-height:44px;min-width:44px}
+.card{touch-action:pan-y;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(580px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #241b10;padding:24px 26px;box-shadow:0 18px 60px #000c;-webkit-user-select:text;user-select:text}
+.card h1{font:bold clamp(32px,6vw,50px) "Courier New",monospace;letter-spacing:.18em;margin:0 0 6px;color:var(--gold);text-shadow:0 0 18px #ffd44744}
+.card h2{font-weight:normal;font-size:24px;margin:0 0 10px;color:var(--gold)}
+.card p{line-height:1.48;color:#ded2b8;margin:8px 0}
+.eyebrow{font:11px "Courier New",monospace;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.note{font-size:13px;color:var(--muted)}
+.note a{color:var(--gold)}
+label.note{display:inline-flex;align-items:center;gap:8px;margin:6px 12px 6px 0}
+dl.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:12px 0}
+dl.keys dt{font:12px "Courier New",monospace;color:var(--gold);white-space:nowrap}
+dl.keys dd{margin:0;color:#ded2b8}
+#hud{position:absolute;inset:0;pointer-events:none;font:12px "Courier New",monospace}
+.stats{position:absolute;left:calc(10px + var(--safe-l));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);padding:7px 9px;width:308px;box-sizing:border-box;display:grid;gap:4px;pointer-events:auto}
+.topline,.midline{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#vault-title{color:var(--gold);font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cogs{color:var(--gold);font-weight:bold;white-space:nowrap}
+#steps{color:var(--ink);font-weight:bold}
+#chapter{color:var(--muted);font-size:11px}
+.tools{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.tools button{flex:1 1 auto;min-width:46px}
+#objective{position:absolute;left:calc(328px + var(--safe-l));right:calc(10px + var(--safe-r));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);padding:8px 12px;text-align:center;font:13px Georgia,serif;color:#f5ebd4;box-sizing:border-box}
+#toast{position:absolute;left:50%;bottom:calc(24px + var(--safe-b));transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:7px 14px;font:12px "Courier New",monospace;color:var(--gold);opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
+#toast.visible{opacity:1}
+#vault-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:6px;margin:10px 0;max-height:52dvh;overflow:auto}
+.vbtn{display:grid;gap:2px;text-align:left;padding:7px 9px;font:12px "Courier New",monospace}
+.vbtn strong{font-size:13px}
+.vbtn small{color:var(--muted);font-size:10px}
+.vbtn.cleared{border-color:#52e062}
+.vbtn.cog{border-color:var(--gold);background:#2c2210}
+#touch{position:absolute;left:0;right:0;bottom:0;height:0}
+#touch .pad,#touch .side{position:absolute;bottom:calc(10px + var(--safe-b));display:grid;gap:5px}
+#touch .pad{left:calc(10px + var(--safe-l));grid-template-columns:repeat(3,50px)}
+#touch .side{right:calc(10px + var(--safe-r));grid-template-columns:repeat(3,56px)}
+#touch button{height:48px;padding:0;font:15px "Courier New",monospace;background:#1f170ecc;touch-action:none;user-select:none;-webkit-user-select:none}
+#touch .blank{visibility:hidden}
+#touch small{display:block;font-size:9px;color:var(--muted)}
+body.touch #toast{bottom:calc(124px + var(--safe-b))}
+body:not([data-mode=play]) #touch{display:none}
+#fatal{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#0c0906;color:var(--ink);padding:24px}
+@media(max-width:720px){
+  .stats{left:calc(8px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(8px + var(--safe-t));width:auto;padding:5px 7px;gap:3px}
+  #objective{left:calc(8px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(var(--stats-bottom,120px) + 6px);font-size:12px;padding:5px 8px}
+  #touch .pad{grid-template-columns:repeat(3,46px);gap:4px}
+  #touch .side{grid-template-columns:repeat(3,52px);gap:4px}
+  #touch button{height:46px;font-size:14px}
+  .card{padding:18px}
+}
+@media(max-height:460px){
+  .stats{width:290px;right:auto;padding:4px 7px;gap:2px}
+  #objective{left:calc(306px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(8px + var(--safe-t));font-size:11px;padding:4px 8px}
+  #touch .pad,#touch .side{bottom:calc(6px + var(--safe-b))}
+  #touch button{height:44px}
+  body.touch #toast{top:calc(52px + var(--safe-t));bottom:auto}
+  .card{padding:16px}
+}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="view" aria-label="Brass clockwork vault puzzle grid drawn in coloured letters"></canvas>
+<section id="hud" hidden aria-label="Vault status">
+  <div class="stats">
+    <div class="topline"><span id="vault-title">VAULT 1/30 · First Spark</span><span id="cogs">* 0</span></div>
+    <div class="midline"><span id="steps">STEPS 0 / PAR 17</span><span id="chapter">Copper Hall</span></div>
+    <div class="tools">
+      <button id="undo-btn" class="small" type="button">Undo</button>
+      <button id="reset-btn" class="small" type="button">Reset</button>
+      <button id="hint-btn" class="small" type="button">Hint</button>
+      <button id="vaults-btn" class="small" type="button">Vaults</button>
+      <button id="mute" class="small" type="button">Sound</button>
+      <button id="pause-btn" class="small" type="button">Pause</button>
+    </div>
+  </div>
+  <div id="objective" role="status">Rotate the mirror and light every receptor.</div>
+</section>
+<div id="toast" role="status"></div>
+<nav id="touch" hidden aria-label="Touch controls">
+  <div class="pad">
+    <button class="blank" aria-hidden="true" tabindex="-1"></button><button data-dir="0,-1" aria-label="Step north">&#9650;</button><button class="blank" aria-hidden="true" tabindex="-1"></button>
+    <button data-dir="-1,0" aria-label="Step west">&#9664;</button><button data-dir="0,1" aria-label="Step south">&#9660;</button><button data-dir="1,0" aria-label="Step east">&#9654;</button>
+  </div>
+  <div class="side">
+    <button data-act="action" aria-label="Rotate or wait">E<small>turn</small></button>
+    <button data-act="undo" aria-label="Undo step">Z<small>undo</small></button>
+    <button data-act="reset" aria-label="Reset vault">R<small>reset</small></button>
+  </div>
+</nav>
+<section id="title" class="card" aria-labelledby="title-heading">
+  <div class="eyebrow">Glyph Arcade · clockwork signal puzzles</div>
+  <h1 id="title-heading">LOCKWORK</h1>
+  <p>Restore power to 30 ancient brass vaults. Slide copper conduits, rotate mirrors, weight pressure plates and sync pulse delays so every receptor lights up together—unlocking the exit lift.</p>
+  <div class="row">
+    <button id="new-run" class="primary" type="button">New journey</button>
+    <button id="continue" type="button" hidden>Continue</button>
+    <button id="how-to" type="button">How to play</button>
+  </div>
+  <label class="note">Difficulty<select id="difficulty"><option value="relaxed">Relaxed (+4 par, hints)</option><option value="standard" selected>Standard</option><option value="master">Master (extra obstacle)</option></select></label>
+  <p id="best" class="note"></p>
+  <p class="note">Progress saves automatically. <a href="index.html">More games in the arcade</a></p>
+</section>
+<section id="pause" class="card" hidden aria-labelledby="pause-heading">
+  <div class="eyebrow">Clockwork held</div>
+  <h2 id="pause-heading">Gears at rest</h2>
+  <div class="row">
+    <button id="resume-btn" class="primary" type="button">Resume</button>
+    <button id="pause-help" type="button">Controls</button>
+    <button id="pause-title" type="button">Save and quit</button>
+  </div>
+</section>
+<section id="vaults" class="card" hidden aria-labelledby="vaults-heading">
+  <div class="eyebrow">Five chapters · 30 vaults</div>
+  <h2 id="vaults-heading">Select a vault</h2>
+  <div id="vault-grid"></div>
+  <div class="row"><button id="vaults-close" class="primary" type="button">Back to vault (L)</button></div>
+</section>
+<section id="help" class="card" hidden aria-labelledby="help-heading">
+  <div class="eyebrow">Engineer's manual</div>
+  <h2 id="help-heading">How to play Lockwork</h2>
+  <dl class="keys">
+    <dt>W A S D · Arrows</dt><dd>Step 1 tile, or walk into crates [#] and conduits [+][-][|] to push them.</dd>
+    <dt>Space · E · Enter</dt><dd>Rotate an adjacent mirror [/][\] or splitter [T], or wait 1 tick in place.</dd>
+    <dt>Z · Backspace</dt><dd>Undo your last step (unlimited).</dd>
+    <dt>R · H · L</dt><dd>Reset vault · Show Hint · Vault Select menu.</dd>
+    <dt>P · Esc</dt><dd>Pause.</dd>
+    <dt>Touch</dt><dd>Tap adjacent floor/mechanisms directly on the vault, swipe, or use the bottom pads.</dd>
+    <dt>Gamepad</dt><dd>Left stick or D-pad steps, A rotates/waits, B undoes, Y resets, Select opens vaults, Start pauses.</dd>
+  </dl>
+  <p class="note">Every step advances the clock by 1 tick: Pulse Coils (P) fire on even ticks, Delay Capacitors [1][2] release beams 1 or 2 ticks later, and Inverters [!] fire only when unlit.</p>
+  <div class="row"><button id="help-back" class="primary" type="button">Back</button></div>
+</section>
+<section id="end" class="card" hidden aria-labelledby="end-title">
+  <div class="eyebrow">Grand Mainspring restored</div>
+  <h2 id="end-title"></h2>
+  <p id="end-detail"></p>
+  <p id="end-score" class="note"></p>
+  <div class="row">
+    <button id="end-again" class="primary" type="button">New journey</button>
+    <button id="end-menu" type="button">Title</button>
+  </div>
+</section>
+<div id="fatal" hidden><h2>Lockwork could not start</h2><p></p></div>
+<script>/*__CODE__*/</script>
+</body>
+</html>
