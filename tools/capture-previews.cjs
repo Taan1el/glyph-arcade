@@ -173,6 +173,21 @@ const out = path.join(root, 'dist/previews');
     await page.screenshot({ path: path.join(out, 'ricochet.png') });
     console.log('Wrote dist/previews/ricochet.png');
 
+    // 8. Capture Lockwork preview
+    await page.goto(pathToFileURL(path.join(root, 'dist/lockwork.html')).href);
+    await page.waitForFunction(() => window.lockwork);
+    await page.evaluate(() => {
+      const L = window.Lockwork, app = window.lockwork, state = L.newGame('lockwork', 'standard', 11);
+      app.begin(state);
+      app.act({ hint: true });
+      app.mode = 'pause';
+      document.getElementById('pause').hidden = true;
+      document.getElementById('toast').classList.remove('visible');
+    });
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(out, 'lockwork.png') });
+    console.log('Wrote dist/previews/lockwork.png');
+
     // Rebuild launcher so dist/index.html embeds the newly generated preview images
     buildLauncher({ siteUrl: process.env.PAGES_URL || '' });
   } finally {

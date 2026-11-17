@@ -17,6 +17,7 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | **Joyride** | A top-down open-world driving town across four districts with lanes, traffic lights, pedestrians, ringing payphones, twelve contact jobs, an armoured-van heist at the Docks, and five stars of police heat. |
 | **Bannerfall** | A single-player three-lane battle. Choose Warden, Ranger, Ember or Shade, escort waves, buy equipment and bring down the rival Banner. |
 | **Ricochet** | A 1v1 overhead neon disc court. Catch, charge, curve spin shots, bank off bumpers to break goal shields, and clear four tournament courts. |
+| **Lockwork** | A clockwork signal-routing puzzle across 30 ancient brass vaults. Slide copper conduits, turn mirrors, weight plates and sync pulse delays. |
 | [Next Stop](https://github.com/Taan1el/next-stop) | A rural steam railway in coloured letters ([play](https://taan1el.github.io/next-stop/)). Lives in its own repository. |
 
 ## How to Play
@@ -95,6 +96,16 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | `Space` / `Shift` | Dash to intercept fast discs. |
 | `P` / `Esc` | Pause. |
 | Touch / gamepad | Left pad moves/aims; Throw, Spin, and Dash buttons (or `A` / `X` / `B` on gamepad). |
+
+### Lockwork Controls
+
+| Key / Input | Action |
+|---|---|
+| `W A S D` / Arrow keys | Step 1 tile (pushing crates `[#]` and conduits `[+][-][|]`). |
+| `Space` / `E` / `Enter` | Rotate adjacent mirror or splitter, or wait 1 tick. |
+| `Z` / `Backspace` · `R` | Undo step · Reset vault. |
+| `H` · `L` / `Tab` · `P` / `Esc` | Hint · Vault Select · Pause. |
+| Touch / gamepad | Tap/swipe vault or use pads; `A` rotates/waits, `B` undoes, `Y` resets on gamepad. |
 
 ### Touch, gamepad and difficulty
 

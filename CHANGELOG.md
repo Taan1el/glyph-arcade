@@ -5,6 +5,7 @@ All notable changes to Glyph Arcade are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Lockwork (`games/lockwork/`)**: A 30-vault clockwork signal-routing puzzle across five chapters (`Copper Hall`, `The Splitters`, `Phase Chambers`, `Chronos Works`, `Grand Mainspring`), with sliding conduits, rotatable mirrors and T-splitters, pressure gates, phase inverters, delay capacitors, pulse coils, dual-colour filters, unlimited undo, live BFS hints, and saved progress.
 - **Ricochet (`games/ricochet/`)**: A 1v1 overhead disc court sport on the shared engine across four tournament courts (`Foundry`, `Twin Pillar`, `Conveyor`, `Prism Finals`), four archetypes (`Striker`, `Spinner`, `Bastion`, `Phantom`), curve spin, wall bank speedups, frame-window parries, shield segments, bullseye pockets, and saved tournaments.
 - **Bannerfall (`games/bannerfall/`)**: A single-player glyph lane battler with four heroes, waves, towers, shops, jungle objectives and saved matches. Local development build; playtest evidence tracked separately.
 - **Joyride (`games/joyride/`)**: A top-down open-world driving game on the shared engine, with rules, scene, app, shell, 9 rule checks, a road-graph bot that finishes all 13 jobs across town, a preview image and a smoke test.

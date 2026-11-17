@@ -272,6 +272,32 @@ const { pathToFileURL } = require('node:url');
     }
     if (errors.length) throw new Error(errors.join('\n'));
     console.log('PASS Ricochet boots, moves, throws, pauses, saves and renders', JSON.stringify(ricoOut));
+
+    // 9. Lockwork smoke check
+    await page.goto(pathToFileURL(path.join(__dirname, '../dist/lockwork.html')).href);
+    await page.waitForFunction(() => window.lockwork);
+    await page.click('#new-run');
+    await page.waitForTimeout(250);
+    const lockStart = await page.evaluate(() => ({ px: lockwork.state.vault.px, py: lockwork.state.vault.py, steps: lockwork.state.vault.steps }));
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(100);
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(100);
+    if (!await page.evaluate(() => lockwork.mode === 'pause')) throw new Error('Lockwork did not pause');
+    await page.click('#pause-title');
+    await page.click('#continue');
+    await page.waitForTimeout(200);
+    const lockOut = await page.evaluate(s => ({
+      mode: lockwork.mode,
+      moved: lockwork.state.vault.px !== s.px || lockwork.state.vault.py !== s.py,
+      steps: lockwork.state.vault.steps,
+      cells: new Set(lockwork.view.inspect().glyphs).size
+    }), lockStart);
+    if (lockOut.mode !== 'play' || !lockOut.moved || lockOut.steps !== 1 || lockOut.cells < 6) {
+      throw new Error('Lockwork play/save/render check failed: ' + JSON.stringify(lockOut));
+    }
+    if (errors.length) throw new Error(errors.join('\n'));
+    console.log('PASS Lockwork boots, steps, pauses, saves and renders', JSON.stringify(lockOut));
   } finally {
     await browser.close();
   }
