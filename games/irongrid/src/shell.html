@@ -1,0 +1,200 @@
+<!doctype html>
+<!--__LICENSE__-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Irongrid · Tactical steam-walker grid &amp; cards in letters</title>
+<!--__META__-->
+<style>
+:root{--ink:#e8f1fa;--muted:#8da3b8;--steel:#58b8ff;--gold:#ffd147;--red:#ff4438;--green:#72d648;--violet:#b878ff;--panel:#0e151eeb;--line:#2d435a;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);background:#080c12;--safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px)}
+html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;width:100%;height:100%}
+body{margin:0;overflow:hidden;background:#080c12}
+body.touch{touch-action:none}
+[hidden]{display:none!important}
+#view{display:block;width:100vw;height:100vh;height:100dvh;touch-action:none;cursor:crosshair}
+button,select{font:inherit;cursor:pointer;background:#172330;color:var(--ink);border:1px solid #3c5876;padding:8px 12px;border-radius:2px;min-height:44px;box-sizing:border-box}
+button:hover:not(:disabled),button:focus-visible,select:focus-visible{background:#213447;outline:2px solid var(--steel);outline-offset:1px}
+button:disabled{cursor:default;opacity:.5}
+button.primary{background:var(--gold);color:#141004;border-color:#ffe788;font-weight:bold}
+button.danger{background:#471819;border-color:var(--red);color:#ffd8d6}
+button.small{padding:4px 8px;font:11px "Courier New",monospace;min-height:44px;min-width:44px}
+.card{touch-action:pan-y;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(620px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #162230;padding:22px 24px;box-shadow:0 18px 60px #000c;-webkit-user-select:text;user-select:text;z-index:20}
+.card h1{font:bold clamp(30px,6vw,48px) "Courier New",monospace;letter-spacing:.16em;margin:0 0 6px;color:var(--steel);text-shadow:0 0 18px #58b8ff44}
+.card h2{font-weight:normal;font-size:22px;margin:0 0 10px;color:var(--gold)}
+.card p{line-height:1.45;color:#cedce8;margin:8px 0}
+.eyebrow{font:11px "Courier New",monospace;letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.note{font-size:13px;color:var(--muted)}
+.note a{color:var(--steel)}
+label.note{display:inline-flex;align-items:center;gap:8px;margin:6px 10px 6px 0}
+dl.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px;margin:10px 0}
+dl.keys dt{font:12px "Courier New",monospace;color:var(--gold);white-space:nowrap}
+dl.keys dd{margin:0;color:#d2e0ed}
+#hud{position:absolute;inset:0;pointer-events:none;font:12px "Courier New",monospace}
+.stats{position:absolute;left:calc(10px + var(--safe-l));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);padding:6px 9px;width:360px;box-sizing:border-box;display:grid;gap:4px;pointer-events:auto}
+.stat-row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+#sector-label{color:var(--gold);font-weight:bold}
+#turn-label{color:var(--ink);font-weight:bold}
+#grid-meter{color:var(--gold);font-weight:bold}
+#energy-meter{color:var(--steel);font-weight:bold}
+#rig-status{color:#d8ecff;font-size:11px}
+.tools{display:flex;gap:4px;align-items:center}
+.tools button{flex:1 1 auto;min-width:44px}
+#objective{position:absolute;left:calc(380px + var(--safe-l));right:calc(10px + var(--safe-r));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--steel);padding:7px 12px;font:12px "Courier New",monospace;color:#eaf2fa;box-sizing:border-box;display:grid;gap:3px}
+#preview-line{color:var(--gold);font-size:11px;min-height:14px}
+#hotbar{position:absolute;left:50%;bottom:calc(10px + var(--safe-b));transform:translateX(-50%);width:min(820px,calc(100vw - 16px - var(--safe-l) - var(--safe-r)));background:var(--panel);border:1px solid var(--line);padding:5px;box-sizing:border-box;display:flex;gap:5px;align-items:stretch;pointer-events:auto}
+.cards-wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;flex:1 1 auto;min-width:0}
+.slot{display:grid;gap:2px;align-content:center;text-align:left;padding:5px 7px;min-height:48px;min-width:48px;font:11px "Courier New",monospace;border:1px solid #395570;background:#13202e}
+.slot strong{font-size:11px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot small{font-size:10px;color:var(--steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot.active{border-color:var(--gold);background:#25331d;outline:2px solid var(--gold)}
+.slot.cant{opacity:.45}
+.acts-wrap{display:flex;gap:5px;flex:0 0 auto}
+.acts-wrap button{min-width:58px;min-height:48px;font:11px "Courier New",monospace;padding:4px 8px;display:grid;place-content:center;text-align:center}
+#end-turn-btn{background:#233b24;border-color:var(--green);color:#e4ffdf;font-weight:bold}
+#reward-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:12px 0}
+.rcard{display:grid;gap:6px;text-align:left;padding:12px;background:#13202e;border:1px solid #3c5876;min-height:86px}
+.rcard strong{color:var(--gold);font:bold 14px "Courier New",monospace}
+.rcard span{color:var(--steel);font:11px "Courier New",monospace}
+.rcard small{color:#d2e0ed;font-size:12px;line-height:1.35}
+#toast{position:absolute;left:50%;bottom:calc(82px + var(--safe-b));transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:6px 14px;font:12px "Courier New",monospace;color:var(--gold);opacity:0;transition:opacity .2s;pointer-events:none;max-width:88vw;text-align:center;z-index:15}
+#toast.visible{opacity:1}
+#fatal{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#080c12;color:var(--ink);padding:24px}
+@media(max-width:720px){
+  .stats{left:calc(8px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(8px + var(--safe-t));width:auto;padding:5px 7px;gap:3px}
+  #objective{left:calc(8px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(var(--stats-bottom,102px) + 5px);padding:5px 8px;font-size:11px}
+  #hotbar{flex-direction:column;gap:4px;bottom:calc(8px + var(--safe-b));width:calc(100vw - 16px - var(--safe-l) - var(--safe-r));padding:4px}
+  .cards-wrap{grid-template-columns:repeat(4,1fr);gap:4px}
+  .slot{min-height:46px;min-width:44px;padding:3px 4px}
+  .acts-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+  .acts-wrap button{min-height:44px;min-width:44px}
+  #toast{bottom:calc(116px + var(--safe-b))}
+  .card{padding:16px}
+}
+@media(max-height:460px){
+  .stats{left:calc(8px + var(--safe-l));top:calc(6px + var(--safe-t));width:330px;right:auto;padding:4px 7px;gap:2px}
+  #objective{left:calc(346px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(6px + var(--safe-t));padding:5px 8px;font-size:11px}
+  #hotbar{flex-direction:row;bottom:calc(6px + var(--safe-b));padding:3px;gap:4px;width:calc(100vw - 16px - var(--safe-l) - var(--safe-r))}
+  .cards-wrap{grid-template-columns:repeat(4,1fr);gap:3px}
+  .slot{min-height:44px;min-width:44px;padding:3px 5px}
+  .acts-wrap{display:flex;gap:3px}
+  .acts-wrap button{min-height:44px;min-width:48px;padding:2px 6px}
+  #toast{top:calc(66px + var(--safe-t));bottom:auto}
+  .card{padding:14px}
+}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="view" aria-label="Tactical 8 by 8 island battlefield drawn in coloured letters"></canvas>
+<section id="hud" hidden aria-label="Tactical status">
+  <div class="stats">
+    <div class="stat-row">
+      <span id="sector-label">SEC 1/4 · Rust Flats</span>
+      <span id="turn-label">TURN 1 / 5</span>
+    </div>
+    <div class="stat-row">
+      <span id="grid-meter">PWR [######] 6/6</span>
+      <span id="energy-meter">NRG * * *</span>
+    </div>
+    <div class="stat-row">
+      <span id="rig-status">[T] TITAN 4/4HP · READY</span>
+      <div class="tools">
+        <button id="mute" class="small" type="button">Sound</button>
+        <button id="pause-btn" class="small" type="button">Pause</button>
+      </div>
+    </div>
+  </div>
+  <div id="objective" role="status">
+    <div id="obj-line">Rust Flats: Hold 5 turns.</div>
+    <div id="preview-line">Select a rig to move, or choose a Command Card (1-4).</div>
+  </div>
+  <div id="hotbar" aria-label="Command cards and turn actions">
+    <div id="card-row" class="cards-wrap">
+      <button class="slot card-btn" data-slot="0" type="button"><strong>1. Iron Fist</strong><small>1 NRG · MELEE</small></button>
+      <button class="slot card-btn" data-slot="1" type="button"><strong>2. Mortar</strong><small>1 NRG · ARC</small></button>
+      <button class="slot card-btn" data-slot="2" type="button"><strong>3. Grapple</strong><small>1 NRG · PULL</small></button>
+      <button class="slot card-btn" data-slot="3" type="button"><strong>4. Aegis</strong><small>1 NRG · SHIELD</small></button>
+    </div>
+    <div class="acts-wrap">
+      <button id="cycle-rig-btn" type="button">Rig<br>(Tab)</button>
+      <button id="undo-btn" type="button">Undo<br>(Z)</button>
+      <button id="end-turn-btn" type="button">End Turn<br>(E)</button>
+    </div>
+  </div>
+</section>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<section id="title" class="card" aria-label="Title menu">
+  <div class="eyebrow">Tactical Island Squad · 4 Sectors</div>
+  <h1>IRONGRID</h1>
+  <p>Command three steam-walker rigs on an 8&times;8 grid. Enemies telegraph their attacks &mdash; shove, grapple, shield, and lure them into mountains, deep water, and each other.</p>
+  <div class="row">
+    <label class="note">Difficulty <select id="difficulty">
+      <option value="easy">Easy (7 Grid Power · Card Rewind)</option>
+      <option value="normal" selected>Normal (6 Grid Power)</option>
+      <option value="hard">Hard (5 Grid Power · Elites)</option>
+    </select></label>
+  </div>
+  <div class="row">
+    <button id="new-run" class="primary" type="button">New campaign</button>
+    <button id="continue" hidden type="button">Continue</button>
+    <button id="how-to" type="button">Controls &amp; tactics</button>
+  </div>
+  <p id="best" class="note"></p>
+  <p class="note">Original game in plain WebGL2 &middot; Zero external dependencies &middot; <a href="index.html">More arcade games</a></p>
+</section>
+
+<section id="pause" class="card" hidden aria-label="Paused">
+  <div class="eyebrow">Squad on standby</div>
+  <h2>Command paused</h2>
+  <p id="pause-info" class="note"></p>
+  <div class="row">
+    <button id="resume-btn" class="primary" type="button">Resume</button>
+    <button id="pause-help" type="button">Controls &amp; tactics</button>
+    <button id="pause-title" type="button">Save and quit</button>
+  </div>
+</section>
+
+<section id="help" class="card" hidden aria-label="Controls and tactics">
+  <h2>Controls &amp; tactical field guide</h2>
+  <p>Enemies lock relative target arrows (<code>^ V &lt; &gt;</code>) and rings (<code>(X)</code>) on Turn Start. Pushing an enemy shifts its locked attack with it!</p>
+  <dl class="keys">
+    <dt>Click / Tap</dt><dd>Click a blue square to move rig; select a card (1-4) and click target. On touch, tap target once to preview push, tap again to fire.</dd>
+    <dt>WASD / Arrows</dt><dd>Move tactical cursor across the 8&times;8 grid.</dd>
+    <dt>Space / Enter</dt><dd>Confirm cursor tile (select rig, move rig, or fire selected card).</dd>
+    <dt>1 / 2 / 3 / 4</dt><dd>Select Command Card 1&ndash;4 (also selects card reward 1&ndash;3 after each battle).</dd>
+    <dt>Tab / Q</dt><dd>Cycle through standing steam-walkers.</dd>
+    <dt>Z / Backspace</dt><dd>Undo rig movement before playing a Command Card (Easy grants 1 Card Rewind/battle).</dd>
+    <dt>E</dt><dd>End Player Turn and trigger Resolution Phase.</dd>
+    <dt>Knockback</dt><dd>Bumping mountain/unit deals +1 collision damage to both. Water (<code>~</code>) and chasm kill ground foes instantly.</dd>
+    <dt>Fissures (%)</dt><dd>Stand on an emerging fissure at turn end to block the spawn for 1 self-damage.</dd>
+    <dt>Gamepad</dt><dd>Stick/D-pad moves cursor, A confirms, B undo/cancel, LB/RB cycle rigs, X/Y cycle cards, Start end turn / pause.</dd>
+  </dl>
+  <div class="row"><button id="help-back" class="primary" type="button">Back</button></div>
+</section>
+
+<section id="reward" class="card" hidden aria-label="Command card draft">
+  <div class="eyebrow">Sector cleared · +1 Grid Power &amp; Full Rig Repair</div>
+  <h2>Draft 1 new Command Card</h2>
+  <p class="note">Choose a card to add permanently to your squad deck before advancing (keys 1, 2, 3 or click):</p>
+  <div id="reward-cards"></div>
+</section>
+
+<section id="end" class="card" hidden aria-label="Campaign result">
+  <div class="eyebrow" id="end-tag">Campaign report</div>
+  <h2 id="end-title">Sector Secured</h2>
+  <p id="end-detail"></p>
+  <p id="end-score" class="note"></p>
+  <div class="row">
+    <button id="end-again" class="primary" type="button">New campaign</button>
+    <button id="end-menu" type="button">Title screen</button>
+  </div>
+</section>
+
+<section id="fatal" hidden><h2>WebGL2 is required</h2><p>Irongrid renders its tactical grid in WebGL2. Try a modern browser with WebGL2 enabled.</p></section>
+<script>/*__CODE__*/</script>
+</body>
+</html>
