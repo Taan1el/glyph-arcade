@@ -154,6 +154,25 @@ const out = path.join(root, 'dist/previews');
     await page.screenshot({ path: path.join(out, 'bannerfall.png') });
     console.log('Wrote dist/previews/bannerfall.png');
 
+    // 7. Capture Ricochet preview
+    await page.goto(pathToFileURL(path.join(root, 'dist/ricochet.html')).href);
+    await page.waitForFunction(() => window.ricochet);
+    await page.evaluate(() => {
+      const R = window.Ricochet, app = window.ricochet, state = R.newGame('preview-court', 'striker', 'normal');
+      state.courtIndex = 1;
+      state.shields[1][0] = 0;
+      state.shields[1][1] = 1;
+      state.holder = -1;
+      state.disc = { x: 16.5, y: 6.2, vx: 26, vy: -14, r: R.DISC_R, spin: 8, bounces: 2, owner: 0, charged: true, parried: false, speed: 30, prismCd: 0 };
+      app.begin(state);
+      app.mode = 'pause';
+      document.getElementById('pause').hidden = true;
+      document.getElementById('toast').classList.remove('visible');
+    });
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(out, 'ricochet.png') });
+    console.log('Wrote dist/previews/ricochet.png');
+
     // Rebuild launcher so dist/index.html embeds the newly generated preview images
     buildLauncher({ siteUrl: process.env.PAGES_URL || '' });
   } finally {

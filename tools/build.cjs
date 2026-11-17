@@ -14,7 +14,9 @@ const GAMES=[
   {id:'joyride',title:'Joyride',tagline:'Steal cars, take jobs from payphones and shake off the police in a living town drawn in letters.',
    parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/joyride/src/rules.js','games/joyride/src/scene.js','games/joyride/src/app.js'],shell:'games/joyride/src/shell.html'},
   {id:'bannerfall',title:'Bannerfall',tagline:'Choose a hero, hold three lanes and burn the rival banner.',
-   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/bannerfall/src/rules.js','games/bannerfall/src/scene.js','games/bannerfall/src/app.js'],shell:'games/bannerfall/src/shell.html'}
+   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/bannerfall/src/rules.js','games/bannerfall/src/scene.js','games/bannerfall/src/app.js'],shell:'games/bannerfall/src/shell.html'},
+  {id:'ricochet',title:'Ricochet',tagline:'Catch the glowing disc, curve spin shots and shatter your rival\'s shields in four neon courts.',
+   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/ricochet/src/rules.js','games/ricochet/src/scene.js','games/ricochet/src/app.js'],shell:'games/ricochet/src/shell.html'}
 ];
 const EXTERNAL=[
   {id:'next-stop',title:'Next Stop',tagline:'A rural steam railway in coloured letters. Drive, deliver and explore a valley.',href:'https://taan1el.github.io/next-stop/'}

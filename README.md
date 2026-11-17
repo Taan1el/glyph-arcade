@@ -16,6 +16,7 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | **Burrow** | A side-view digging and building game. Fell trees, mine copper, iron and crystal, survive the night, and forge the key that wakes The Maw at the bottom of the world. Flood-filled light, flowing water and lava, falling sand, and a world that saves itself. |
 | **Joyride** | A top-down open-world driving town across four districts with lanes, traffic lights, pedestrians, ringing payphones, twelve contact jobs, an armoured-van heist at the Docks, and five stars of police heat. |
 | **Bannerfall** | A single-player three-lane battle. Choose Warden, Ranger, Ember or Shade, escort waves, buy equipment and bring down the rival Banner. |
+| **Ricochet** | A 1v1 overhead neon disc court. Catch, charge, curve spin shots, bank off bumpers to break goal shields, and clear four tournament courts. |
 | [Next Stop](https://github.com/Taan1el/next-stop) | A rural steam railway in coloured letters ([play](https://taan1el.github.io/next-stop/)). Lives in its own repository. |
 
 ## How to Play
@@ -83,6 +84,17 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | `B` | Recall to base; damage interrupts. |
 | `Tab` · `P` / `Esc` | Scoreboard · pause. |
 | Touch / gamepad | Movement and ability controls shown in game help. |
+
+### Ricochet Controls
+
+| Key / Input | Action |
+|---|---|
+| `W A S D` / Arrow keys | Move on your half of the court and steer aim / curve while holding the disc. |
+| `J` / `Enter` / Left click | Hold to charge throw, release to fire; tap on impact to parry. |
+| `K` / `E` / Right click | Curve-spin throw. |
+| `Space` / `Shift` | Dash to intercept fast discs. |
+| `P` / `Esc` | Pause. |
+| Touch / gamepad | Left pad moves/aims; Throw, Spin, and Dash buttons (or `A` / `X` / `B` on gamepad). |
 
 ### Touch, gamepad and difficulty
 

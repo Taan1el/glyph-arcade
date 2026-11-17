@@ -243,6 +243,35 @@ const { pathToFileURL } = require('node:url');
       throw new Error('Bannerfall play/save/render check failed: '+JSON.stringify(bannerOut));
     if (errors.length) throw new Error(errors.join('\n'));
     console.log('PASS Bannerfall boots, moves, casts, pauses, saves and renders', JSON.stringify(bannerOut));
+
+    // 8. Ricochet smoke check
+    await page.goto(pathToFileURL(path.join(__dirname, '../dist/ricochet.html')).href);
+    await page.waitForFunction(() => window.ricochet);
+    await page.click('#new-run');
+    await page.waitForTimeout(300);
+    const ricoStart = await page.evaluate(() => ({ y: ricochet.state.players[0].y, holder: ricochet.state.holder }));
+    await page.keyboard.down('KeyW');
+    await page.waitForTimeout(260);
+    await page.keyboard.up('KeyW');
+    await page.keyboard.press('KeyJ');
+    await page.waitForTimeout(250);
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(100);
+    if (!await page.evaluate(() => ricochet.mode === 'pause')) throw new Error('Ricochet did not pause');
+    await page.click('#pause-title');
+    await page.click('#continue');
+    await page.waitForTimeout(200);
+    const ricoOut = await page.evaluate(start => ({
+      mode: ricochet.mode,
+      moved: Math.abs(ricochet.state.players[0].y - start.y) > 0.2,
+      threw: ricochet.state.holder !== start.holder || Math.hypot(ricochet.state.disc.vx, ricochet.state.disc.vy) > 1,
+      cells: new Set(ricochet.view.inspect().glyphs).size
+    }), ricoStart);
+    if (ricoOut.mode !== 'play' || !ricoOut.moved || !ricoOut.threw || ricoOut.cells < 6) {
+      throw new Error('Ricochet play/save/render check failed: ' + JSON.stringify(ricoOut));
+    }
+    if (errors.length) throw new Error(errors.join('\n'));
+    console.log('PASS Ricochet boots, moves, throws, pauses, saves and renders', JSON.stringify(ricoOut));
   } finally {
     await browser.close();
   }
