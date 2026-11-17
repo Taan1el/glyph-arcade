@@ -1,0 +1,158 @@
+<!doctype html>
+<!--__LICENSE__-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Ricochet · Arcade disc court in letters</title>
+<!--__META__-->
+<style>
+:root{--ink:#e8edf4;--muted:#90a0b8;--gold:#ffe055;--cyan:#48d0ff;--coral:#ff5a4e;--panel:#0e1420ea;--line:#3a4c68;font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#070a12;--safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px)}
+html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;overflow:hidden;background:#070a12}
+body.touch{touch-action:none}
+[hidden]{display:none!important}
+#view{display:block;width:100vw;height:100vh;height:100dvh;touch-action:none;cursor:crosshair}
+button,select{font:inherit;cursor:pointer;background:#182234;color:var(--ink);border:1px solid #4e688c;padding:9px 14px;border-radius:2px;min-height:44px}
+button:hover:not(:disabled),button:focus-visible,select:focus-visible{background:#24334c;outline:2px solid var(--gold);outline-offset:1px}
+button:disabled{cursor:default;opacity:.6}
+button.primary{background:var(--gold);color:#141206;border-color:#fff0a0;font-weight:bold}
+button.small{padding:4px 8px;font:11px "Courier New",monospace;min-height:44px;min-width:46px}
+.card{touch-action:pan-y;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #141d2e;padding:24px 26px;box-shadow:0 18px 60px #000c;-webkit-user-select:text;user-select:text}
+.card h1{font:bold clamp(32px,6vw,50px) "Courier New",monospace;letter-spacing:.2em;margin:0 0 6px;color:var(--gold);text-shadow:0 0 18px #ffe05544}
+.card h2{font-weight:normal;font-size:24px;margin:0 0 10px;color:var(--gold)}
+.card p{line-height:1.48;color:#cdd8e8;margin:8px 0}
+.eyebrow{font:11px "Courier New",monospace;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.note{font-size:13px;color:var(--muted)}
+.note a{color:var(--gold)}
+label.note{display:inline-flex;align-items:center;gap:8px;margin:6px 12px 6px 0}
+#archetypes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.arch{display:grid;gap:2px;text-align:center;padding:8px 6px}
+.arch b{font:bold 20px "Courier New",monospace;color:var(--cyan)}
+.arch strong{font-size:14px}
+.arch[aria-pressed="true"]{border-color:var(--gold);background:#263650;box-shadow:inset 0 0 0 1px var(--gold)}
+dl.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:12px 0}
+dl.keys dt{font:12px "Courier New",monospace;color:var(--gold);white-space:nowrap}
+dl.keys dd{margin:0;color:#cdd8e8}
+#hud{position:absolute;inset:0;pointer-events:none;font:12px "Courier New",monospace}
+.stats{position:absolute;left:calc(10px + var(--safe-l));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);padding:7px 10px;width:274px;box-sizing:border-box;display:grid;gap:4px;pointer-events:auto}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:6px}
+#court-name{color:var(--cyan);font-weight:bold}
+#rally-badge{color:var(--gold);font-weight:bold}
+.boardline{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:bold}
+#scoreline{color:var(--ink)}
+#setsline{color:var(--muted);font-size:11px}
+.tools{display:flex;gap:6px;margin-top:2px}
+.tools button{flex:1}
+#objective{position:absolute;left:calc(296px + var(--safe-l));right:calc(10px + var(--safe-r));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);padding:8px 12px;text-align:center;font:13px Georgia,serif;color:#eef2f8;box-sizing:border-box}
+#toast{position:absolute;left:50%;top:calc(74px + var(--safe-t));transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:7px 14px;font:12px "Courier New",monospace;color:var(--gold);opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
+#toast.visible{opacity:1}
+#touch{position:absolute;left:0;right:0;bottom:0;height:0}
+#touch .pad,#touch .side{position:absolute;bottom:calc(12px + var(--safe-b));display:grid;gap:6px}
+#touch .pad{left:calc(10px + var(--safe-l));grid-template-columns:repeat(3,52px)}
+#touch .side{right:calc(10px + var(--safe-r));grid-template-columns:repeat(3,62px)}
+#touch button{height:52px;padding:0;font:16px "Courier New",monospace;background:#121b2bcc;touch-action:none;user-select:none;-webkit-user-select:none}
+#touch .blank{visibility:hidden}
+#touch small{display:block;font-size:9px;color:var(--muted)}
+body.touch button.small{min-height:44px;min-width:44px}
+body:not([data-mode=play]) #touch{display:none}
+#fatal{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#070a12;color:var(--ink);padding:24px}
+@media(max-width:640px){
+  .stats{left:calc(8px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(8px + var(--safe-t));width:auto;padding:6px 8px;gap:3px}
+  #objective{left:calc(8px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(var(--stats-bottom,116px) + 6px);font-size:12px;padding:5px 8px}
+  #toast{top:calc(var(--stats-bottom,116px) + 52px)}
+  #archetypes{grid-template-columns:repeat(2,1fr)}
+  #touch .pad{grid-template-columns:repeat(3,46px);gap:4px}
+  #touch .side{grid-template-columns:repeat(3,52px);gap:4px}
+  #touch button{height:48px;font-size:14px}
+  .card{padding:18px}
+}
+@media(max-height:460px){
+  .stats{width:246px;padding:5px 8px;gap:2px}
+  #objective{left:calc(264px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(8px + var(--safe-t));font-size:11px;padding:4px 8px}
+  #touch .pad,#touch .side{bottom:calc(8px + var(--safe-b))}
+  #touch button{height:46px}
+  .card{padding:16px}
+}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="view" aria-label="Overhead neon disc court drawn in coloured letters"></canvas>
+<section id="hud" hidden aria-label="Match status">
+  <div class="stats">
+    <div class="topline"><span id="court-name">1/4 · Foundry Court</span><span id="rally-badge"></span></div>
+    <div class="boardline"><span id="scoreline">YOU 0 : 0 RIVAL</span><span id="setsline">SETS 0 - 0</span></div>
+    <div class="tools">
+      <button id="mute" class="small" type="button">Sound on</button>
+      <button id="pause-btn" class="small" type="button">Pause</button>
+    </div>
+  </div>
+  <div id="objective" role="status">Hold Throw to charge, release to fire, or Spin to curve.</div>
+</section>
+<div id="toast" role="status"></div>
+<nav id="touch" hidden aria-label="Touch controls">
+  <div class="pad">
+    <button class="blank" aria-hidden="true" tabindex="-1"></button><button data-hold="up" aria-label="Move up">&#9650;</button><button class="blank" aria-hidden="true" tabindex="-1"></button>
+    <button data-hold="left" aria-label="Move left">&#9664;</button><button data-hold="down" aria-label="Move down">&#9660;</button><button data-hold="right" aria-label="Move right">&#9654;</button>
+  </div>
+  <div class="side">
+    <button data-hold="throw" aria-label="Throw or parry">J<small>throw</small></button>
+    <button data-press="spin" aria-label="Curve spin throw">K<small>spin</small></button>
+    <button data-press="dash" aria-label="Dash catch">!<small>dash</small></button>
+  </div>
+</nav>
+<section id="title" class="card" aria-labelledby="title-heading">
+  <div class="eyebrow">Glyph Arcade · neon disc court</div>
+  <h1 id="title-heading">RICOCHET</h1>
+  <p>Catch the glowing disc, aim across the net, and bank shots off walls and bumpers to shatter your rival's three goal shields. Score into open gaps—or double points in the gold center pocket—across four courts.</p>
+  <div id="archetypes" role="group" aria-label="Choose your player"></div>
+  <p id="arch-note" class="note"></p>
+  <div class="row">
+    <button id="new-run" class="primary" type="button">New tournament</button>
+    <button id="continue" type="button" hidden>Continue</button>
+    <button id="how-to" type="button">How to play</button>
+  </div>
+  <label class="note">Difficulty<select id="difficulty"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
+  <p id="best" class="note"></p>
+  <p class="note">Matches save automatically. <a href="index.html">More games in the arcade</a></p>
+</section>
+<section id="pause" class="card" hidden aria-labelledby="pause-heading">
+  <div class="eyebrow">Match paused</div>
+  <h2 id="pause-heading">Catch your breath</h2>
+  <div class="row">
+    <button id="resume-btn" class="primary" type="button">Resume</button>
+    <button id="pause-help" type="button">Controls</button>
+    <button id="pause-title" type="button">Save and quit</button>
+  </div>
+</section>
+<section id="help" class="card" hidden aria-labelledby="help-heading">
+  <div class="eyebrow">Court rules</div>
+  <h2 id="help-heading">How to play Ricochet</h2>
+  <dl class="keys">
+    <dt>W A S D · Arrows</dt><dd>Move on your half of the court, and steer throw aim / spin.</dd>
+    <dt>J / Enter / Click</dt><dd>Hold to charge throw, release to fire (hold too long and you fumble!). Tap at impact to parry.</dd>
+    <dt>K / E / Right-click</dt><dd>Curve-spin throw that bends in mid-air.</dd>
+    <dt>Space / Shift</dt><dd>Dash to intercept fast discs.</dd>
+    <dt>P / Esc</dt><dd>Pause.</dd>
+    <dt>Touch</dt><dd>Left pad moves and aims; Throw, Spin, and Dash buttons on the right.</dd>
+    <dt>Gamepad</dt><dd>Left stick moves/aims, A throws/parries, X spins, B or RB dashes, Start pauses.</dd>
+  </dl>
+  <p class="note">Wall bounces boost disc speed up to 3 banks. A 2-bounce bank breaks two goal shields at once. Best of 3 sets to 5 points per court.</p>
+  <div class="row"><button id="help-back" class="primary" type="button">Back</button></div>
+</section>
+<section id="end" class="card" hidden aria-labelledby="end-title">
+  <div class="eyebrow">Tournament complete</div>
+  <h2 id="end-title"></h2>
+  <p id="end-detail"></p>
+  <p id="end-score" class="note"></p>
+  <div class="row">
+    <button id="end-again" class="primary" type="button">New tournament</button>
+    <button id="end-menu" type="button">Title</button>
+  </div>
+</section>
+<div id="fatal" hidden><h2>Ricochet could not start</h2><p></p></div>
+<script>/*__CODE__*/</script>
+</body>
+</html>
