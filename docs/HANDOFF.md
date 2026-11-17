@@ -1,5 +1,31 @@
 # Handoff Log
 
+## Bannerfall - 2026-11-17
+Branch: `feature/bannerfall-2`  Last commit: `0f83330`
+Status: building
+What works:
+- Core data structures in `games/bannerfall/src/rules.js` (96×64 mirrored 3-lane map, 4 heroes with Q/W/E/R definitions, 10 shop items, minion waves, towers, jungle camps, Colossus, fog of war vision, save/restore).
+- Scene shader and ASCII unit/structure frames in `games/bannerfall/src/scene.js`.
+Gaps compared with `docs/NEXT-GAMES.md` spec (recorded before coding):
+1. **AI stalemate & test timeout (`rules.js`, `bot.cjs`, `rules.test.cjs`)**:
+   - Towers deal `target.maxHp * 0.42` to minions (`landHit`), completely cancelling both late-game minion HP scaling and the +40% Colossus minion HP buff, so waves never tank towers long enough late in the match.
+   - When a friendly wave dies (`front === null`), `think()` sends heroes all the way back to `holdPoint` (their own standing tower) instead of holding near midfield or continuing to pressure an exposed structure, causing endless walk-back stalemates.
+   - `flowTo()` clears its entire BFS cache whenever `map.flows.size > 160`, causing repeated full-grid BFS searches every frame when units chase moving targets.
+   - `rules.test.cjs` is missing the spec's 20-match AI-only hero balance check ("across 20 AI-only matches, no single hero wins more than 70%").
+2. **`shell.html` and `app.js` mismatch**:
+   - `games/bannerfall/src/shell.html` comes from an incompatible draft and is missing most DOM IDs required by `app.js` (`#heroes`, `#hero-note`, `#who`, `#hp`, `#hp-bar`, `#mana`, `#mana-bar`, `#xp-bar`, `#gold`, `#score`, `#items`, `#arm`, `#best`, `#end-score`, `#shop-list`, `#shop-note`, `#shop-gold`, `#board`, `#board-body`, `#board-btn`, `#board-close`, `#shop-close`, `#end-again`, `#end-menu`), causing `app.js` to throw on boot.
+3. **Touch, WASD, drag-to-aim, ability rank-up, and ally pings**:
+   - `app.js` does not wire up the `#touch` d-pad/action buttons, drag-from-ability-button aiming, or optional WASD movement mode (`#wasd`).
+   - HUD layout in `shell.html` is not tuned for `tools/layout-check.cjs` across `360×640`, `844×390`, and `1280×720` (where `.stats`, `#minimap`, `#log`, `#objective`, `#hotbar`, `#touch .pad`, `#touch .side` must not overlap and all tap targets must be `>= 44px`).
+   - `tests/browser-smoke.cjs` reads `bannerfall.state.player` and `bannerfall.state.towers`, which are not exposed on `state`.
+   - Allies do not emit simple callout pings (such as `"Help mid"` or `"Colossus up"`) to the event log, and level-ups do not expose ability rank progression.
+Known bugs and rough edges (for Claude):
+- Tracked below as implementation completes.
+Not verified:
+- Full `npm test`, `npm run build`, and `npm run test:browser` (pending fixes below).
+Commands run and results:
+- `git switch -c feature/bannerfall-2 plan/future-games` -> switched to new branch.
+
 ## Planning - 2026-11-17
 Branch: `plan/future-games`  Last commit: `295da51` (base on `feature/bannerfall`)
 Status: planned
