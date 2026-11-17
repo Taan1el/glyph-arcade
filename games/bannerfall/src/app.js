@@ -144,12 +144,14 @@
         if (CAPTURE.has(event.code)) event.preventDefault();
         this.keys.add(event.code);
         if (event.repeat) return;
-        const slot = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3, Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3 }[event.code];
+        const slot = this.wasd
+          ? { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3 }[event.code]
+          : { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3, Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3 }[event.code];
         if (slot !== undefined) this.castSlot(slot, true);
         if (event.code === 'KeyB') this.pending.recall = true;
-        if (event.code === 'KeyS') this.toggleShop();
+        if (event.code === 'KeyS' && !this.wasd) this.toggleShop();
         if (event.code === 'Tab') this.toggleBoard(true);
-        if (event.code === 'KeyA') { this.armed = true; this.el.arm.hidden = false; }
+        if (event.code === 'KeyA' && !this.wasd) { this.armed = true; this.el.arm.hidden = false; }
       });
       global.addEventListener('keyup', event => {
         this.keys.delete(event.code);
@@ -198,12 +200,54 @@
         const button = event.target.closest('button[data-item]');
         if (button) this.pending.buy = button.dataset.item;
       });
-      this.el.hotbar.addEventListener('click', event => {
+      this.el.hotbar.addEventListener('pointerdown', event => {
         const button = event.target.closest('button[data-slot]');
         if (!button || this.mode !== 'play') return;
+        event.preventDefault();
+        if (button.dataset.slot === 'recall') { this.pending.recall = true; return; }
+        const slot = Number(button.dataset.slot);
+        this.dragAim = { id: event.pointerId, slot, startX: event.clientX, startY: event.clientY, dx: 0, dy: 0, moved: false };
+        try { button.setPointerCapture?.(event.pointerId); } catch {}
+      });
+      this.el.hotbar.addEventListener('pointermove', event => {
+        if (!this.dragAim || event.pointerId !== this.dragAim.id) return;
+        const dx = event.clientX - this.dragAim.startX, dy = event.clientY - this.dragAim.startY;
+        this.dragAim.dx = dx;
+        this.dragAim.dy = dy;
+        if (Math.hypot(dx, dy) > 12) this.dragAim.moved = true;
+      });
+      const finishDrag = event => {
+        if (!this.dragAim || event.pointerId !== this.dragAim.id) return;
+        const drag = this.dragAim;
+        this.dragAim = null;
+        if (this.mode !== 'play' || !this.state) return;
+        if (drag.moved) {
+          const p = B.playerHero(this.state), spec = B.HEROES[p.kind].abilities[drag.slot];
+          const d = Math.hypot(drag.dx, drag.dy) || 1, reach = spec.range || 4;
+          this.castAtPoint(drag.slot, { x: p.x + drag.dx / d * reach, y: p.y + drag.dy / d * reach });
+        } else {
+          this.castSlot(drag.slot, false);
+        }
+      };
+      this.el.hotbar.addEventListener('pointerup', finishDrag);
+      this.el.hotbar.addEventListener('pointercancel', () => { this.dragAim = null; });
+      // Keyboard activation of a focused button arrives as a click with no pointer.
+      this.el.hotbar.addEventListener('click', event => {
+        const button = event.target.closest('button[data-slot]');
+        if (!button || this.mode !== 'play' || event.detail !== 0) return;
         if (button.dataset.slot === 'recall') this.pending.recall = true;
         else this.castSlot(Number(button.dataset.slot), false);
       });
+
+      const wasdBox = document.getElementById('wasd');
+      if (wasdBox) {
+        try { this.wasd = localStorage.getItem('bannerfall-wasd') === '1'; } catch { this.wasd = false; }
+        wasdBox.checked = Boolean(this.wasd);
+        wasdBox.addEventListener('change', () => {
+          this.wasd = wasdBox.checked;
+          try { localStorage.setItem('bannerfall-wasd', this.wasd ? '1' : '0'); } catch {}
+        });
+      }
 
       const showMute = () => {
         this.el.mute.textContent = this.sound.muted ? 'Sound off' : 'Sound on';
@@ -430,8 +474,8 @@
     mark(point, hostile) {
       this.marks.push({ x: point.x, y: point.y, r: 0.9, kind: 7, team: hostile ? 1 : 0, life: 0.45 });
     }
-    // Keys cast at the cursor; buttons and touch aim at the nearest sensible target.
-    castSlot(slot, atCursor) {
+    // Keys cast at the cursor; buttons and touch aim at the nearest sensible target or along a drag vector.
+    castAtPoint(slot, aim) {
       const s = this.state, p = B.playerHero(s);
       if (!B.canCast(p, slot)) {
         this.sound.play('denied');
@@ -440,6 +484,10 @@
         else if (p.mana < spec.mana) this.toast(`Not enough mana for ${spec.name}.`);
         return;
       }
+      this.pending.cast = { slot, x: aim.x, y: aim.y };
+    }
+    castSlot(slot, atCursor) {
+      const s = this.state, p = B.playerHero(s);
       const spec = B.HEROES[p.kind].abilities[slot];
       let aim = atCursor && this.mouse.known && !this.touch ? this.toWorld(this.mouse.x, this.mouse.y) : null;
       if (!aim) {
@@ -448,7 +496,13 @@
         const target = foes.filter(u => u.type === 'hero').sort((a, b) => dist(a, p) - dist(b, p))[0] || foes.sort((a, b) => dist(a, p) - dist(b, p))[0];
         aim = target ? { x: target.x, y: target.y } : { x: p.x + p.facing * 4, y: p.y };
       }
-      this.pending.cast = { slot, x: aim.x, y: aim.y };
+      this.castAtPoint(slot, aim);
+    }
+    log(text, team = 0) {
+      if (!this.state) return;
+      this.state.log.push({ text, team, time: (this.state.time || 0) + this.state.log.length * 0.001 });
+      if (this.state.log.length > 8) this.state.log.shift();
+      this.updateHud();
     }
 
     // --- Panels
@@ -580,21 +634,31 @@
         this.panelBottom = panelBottom;
         document.documentElement.style.setProperty('--stats-bottom', panelBottom + 'px');
       }
+      const objBottom = Math.ceil(this.el.objective.getBoundingClientRect().bottom);
+      if (objBottom !== this.objBottom) {
+        this.objBottom = objBottom;
+        document.documentElement.style.setProperty('--objective-bottom', objBottom + 'px');
+      }
+      if (p.skillPoints > 0) {
+        const order = p.level >= 6 ? [3, 0, 1, 2] : [0, 1, 2];
+        const nextRank = order.find(sl => (p.ranks?.[sl] || 0) < (sl === 3 ? 2 : 4));
+        if (nextRank !== undefined) B.rankUp(p, nextRank);
+      }
       const items = p.items.map(id => B.ITEMS[id].name).join(' · ');
       if (items !== this.itemsText) { this.itemsText = items; this.el.items.textContent = items || 'No items yet. Shop at base (S).'; }
       // Ability buttons
       const buttons = this.el.hotbar.children;
       for (let slot = 0; slot < 4; slot++) {
         const spec = hero.abilities[slot], button = buttons[slot], cd = p.cooldowns[slot];
-        const locked = slot === 3 && p.level < 6, ready = B.canCast(p, slot);
-        const key = `${p.kind}|${locked}|${ready}|${Math.ceil(cd)}|${p.mana >= spec.mana}`;
+        const locked = slot === 3 && p.level < 6, ready = B.canCast(p, slot), rank = p.ranks?.[slot] || (locked ? 0 : 1);
+        const key = `${p.kind}|${locked}|${ready}|${Math.ceil(cd)}|${p.mana >= spec.mana}|${rank}`;
         if (button.dataset.key === key) continue;
         button.dataset.key = key;
-        button.querySelector('i').textContent = spec.key;
+        button.querySelector('i').textContent = `${spec.key}${rank > 1 ? '·' + rank : ''}`;
         button.querySelector('b').textContent = spec.name;
         button.querySelector('small').textContent = locked ? 'Level 6' : `${spec.mana} mana`;
         button.querySelector('.cool').textContent = cd > 0 ? Math.ceil(cd) : '';
-        button.title = `${spec.name}: ${spec.text}`;
+        button.title = `${spec.name} (Rank ${rank}): ${spec.text}`;
         button.setAttribute('aria-label', `${spec.key} ${spec.name}${locked ? ', unlocks at level 6' : cd > 0 ? `, ready in ${Math.ceil(cd)} seconds` : ''}`);
         button.classList.toggle('ready', ready);
         button.classList.toggle('locked', locked);
@@ -667,7 +731,8 @@
     gatherInput() {
       const k = this.keys, pad = this.pad, input = this.pending;
       this.pending = {};
-      let mx = (k.has('ArrowRight') ? 1 : 0) - (k.has('ArrowLeft') ? 1 : 0), my = (k.has('ArrowDown') ? 1 : 0) - (k.has('ArrowUp') ? 1 : 0);
+      let mx = (k.has('ArrowRight') || (this.wasd && k.has('KeyD')) ? 1 : 0) - (k.has('ArrowLeft') || (this.wasd && k.has('KeyA')) ? 1 : 0);
+      let my = (k.has('ArrowDown') || (this.wasd && k.has('KeyS')) ? 1 : 0) - (k.has('ArrowUp') || (this.wasd && k.has('KeyW')) ? 1 : 0);
       if (pad.connected) { mx += pad.axis(0); my += pad.axis(1); }
       if (Math.hypot(mx, my) > 0.3) { input.moveX = mx; input.moveY = my; }
       return input;
@@ -755,6 +820,12 @@
       if (p && p.order && p.order.kind === 'attack') {
         const target = B.unitById(state, p.order.id);
         if (target && this.visibleFoe(target)) fx.push({ x: target.x, y: target.y, r: target.type === 'colossus' ? 2.2 : 1.1, kind: 7, team: target.team === 2 ? 2 : 1 });
+      }
+      if (p && this.dragAim && this.dragAim.moved) {
+        const spec = B.HEROES[p.kind].abilities[this.dragAim.slot];
+        const reach = spec.range || 4, d = Math.hypot(this.dragAim.dx, this.dragAim.dy) || 1;
+        if (spec.range > 0) fx.push({ x: p.x, y: p.y, r: spec.range, kind: 8, team: 0 });
+        fx.push({ x: p.x + this.dragAim.dx / d * reach, y: p.y + this.dragAim.dy / d * reach, r: 1.1, kind: 7, team: 0 });
       }
       return fx;
     }

@@ -1,19 +1,206 @@
 <!doctype html>
 <!--__LICENSE__-->
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'"><title>Bannerfall</title><!--__META__-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Bannerfall · Three-lane battle in letters</title>
+<!--__META__-->
 <style>
-:root{font-family:Georgia,serif;color:#dfdfc5;background:#091211;--gold:#e8c77c;--line:#526757;--panel:#101c19f2}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;overflow:hidden}button,select{font:inherit;color:inherit;background:#25372e;border:1px solid var(--line);padding:10px 14px;min-height:44px;cursor:pointer}button:hover,button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}button.primary{background:var(--gold);color:#16211a}button:disabled{opacity:.5}a{color:var(--gold)}#view{display:block;width:100vw;height:100vh;height:100dvh;touch-action:none}.card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(620px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:26px;background:var(--panel);border:1px solid var(--line);box-shadow:0 16px 70px #0009}.card h1{font:700 clamp(28px,6vw,48px) monospace;letter-spacing:.13em;color:var(--gold);margin:8px 0}.card h2{color:var(--gold);margin:6px 0 16px;font-weight:normal}.card p{line-height:1.5}.eyebrow{font:11px monospace;letter-spacing:.16em;color:#9db59d}.row{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.note{font-size:13px;color:#a6b6a5}label{display:inline-flex;align-items:center;gap:8px;margin:4px 10px 4px 0}#hud{position:absolute;inset:0;pointer-events:none;font:12px monospace}#hud button{pointer-events:auto;padding:6px 10px}.stats{position:absolute;left:8px;right:8px;top:max(8px,env(safe-area-inset-top));display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#101c19e6;padding:7px 10px;border-bottom:1px solid var(--line)}#objective{position:absolute;left:10px;right:10px;top:78px;color:var(--gold);line-height:1.4}#status{position:absolute;left:10px;bottom:88px;padding:8px;background:#101c19df;line-height:1.6;max-width:calc(100vw - 130px)}#hotbar{position:absolute;bottom:max(12px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:5px}#hotbar button{width:64px;min-height:58px;font:13px monospace;white-space:pre-line}#minimap{position:absolute;right:10px;bottom:90px;width:108px;height:108px;background:#0c1714;border:1px solid var(--line);image-rendering:pixelated;pointer-events:auto;touch-action:none}#toast{position:absolute;top:24%;left:50%;transform:translateX(-50%);max-width:85vw;padding:8px 12px;background:#101c19e6;font:13px monospace;color:var(--gold);pointer-events:none;opacity:0;transition:opacity .2s}#toast.visible{opacity:1}#log{position:absolute;left:10px;top:112px;font:11px monospace;color:#a6b6a5;pointer-events:none;max-width:250px}#touch{position:absolute;left:10px;bottom:15px;pointer-events:none}#touch button{pointer-events:auto;width:48px;padding:6px;touch-action:none}#touch .middle{display:flex;gap:4px;margin:4px 0}#touch .vertical{margin-left:52px}#items{display:grid;grid-template-columns:1fr 1fr;gap:8px}#items button{text-align:left;font-size:13px}#items small{display:block;color:#bdc7b8;margin-top:4px}#scoreboard{white-space:pre-wrap;font:13px monospace;line-height:1.8}#fatal{position:absolute;inset:0;background:#091211;padding:30px;display:grid;place-content:center;text-align:center}#hero-detail{min-height:48px;color:#bacdb7}
-@media(max-width:700px){.card{padding:19px}.stats{font-size:11px;gap:5px}.stats button{font-size:11px;padding:5px}#objective{flex-basis:100%;order:2}#hotbar{left:auto;right:8px;transform:none;display:grid;grid-template-columns:48px 48px}#hotbar button{width:48px;min-height:48px;font-size:11px}#status{bottom:132px;font-size:11px;max-width:calc(100vw - 115px)}#minimap{bottom:135px;width:88px;height:88px}#items{grid-template-columns:1fr}#log{display:none}}
-@media(max-height:450px){#status{bottom:80px}#minimap{bottom:80px;width:78px;height:78px}#hotbar{bottom:8px}.stats{padding:4px 8px}#objective{flex-basis:auto;order:0}.card{padding:16px}#log{display:none}}
-</style></head><body data-mode="title"><canvas id="view" aria-label="Three-lane battlefield drawn in coloured letters"></canvas>
-<section id="hud" hidden aria-label="Battle status"><div class="stats"><span id="clock">0:00</span><span id="kills">0 : 0</span><button id="shop-btn">Shop</button><button id="mute">Sound off</button><button id="pause-btn">Pause</button></div><div id="objective">Protect your banner.</div><div id="status"></div><canvas id="minimap" width="108" height="108" aria-label="Battle minimap"></canvas><div id="hotbar"></div><div id="log"></div></section>
-<nav id="touch" hidden aria-label="Touch controls"><div class="pad"><div class="vertical"><button data-hold="up" aria-label="Move north">↑</button></div><div class="middle"><button data-hold="left" aria-label="Move west">←</button><button data-hold="down" aria-label="Move south">↓</button><button data-hold="right" aria-label="Move east">→</button></div></div><div class="side"><button id="touch-attack" aria-label="Attack nearest enemy">ATK</button><button id="touch-recall" aria-label="Recall to base">BASE</button></div></nav><div id="toast" role="status"></div>
-<section id="title" class="card"><div class="eyebrow">GLYPH ARCADE · SINGLE-PLAYER LANE BATTLE</div><h1>BANNERFALL</h1><p>Three lanes. Two armies. One banner to burn.</p><p>March behind your minions. Break outer towers before pushing deeper. Recall to heal and spend gold. Fallen heroes return after a short wait.</p><label>Hero<select id="hero"><option value="warden">Warden</option><option value="ranger">Ranger</option><option value="ember">Ember</option><option value="shade">Shade</option></select></label><label>Difficulty<select id="difficulty"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label><p id="hero-detail"></p><div class="row"><button id="new-run" class="primary">New battle</button><button id="continue" hidden>Continue</button><button id="how-to">How to play</button></div><p class="note">A match takes around 15 minutes. <a href="index.html">More games</a></p></section>
-<section id="pause" class="card" hidden><div class="eyebrow">BATTLE PAUSED</div><h2>Hold the line.</h2><div class="row"><button id="resume-btn" class="primary">Resume</button><button id="pause-help">Controls</button><button id="pause-title">Save & title</button><button id="pause-restart">New battle</button></div></section>
-<section id="help" class="card" hidden><h2>Command your hero</h2><p><b>Right-click</b> to move or attack. <b>A + click</b> to attack-move. Arrow keys move directly. Tap ground to move on touch screens.</p><p><b>Q / W / E / R</b> cast toward pointer. R unlocks at level 6. Click ability buttons or drag toward target on touch. <b>B</b> recalls to base in 4 seconds; damage interrupts.</p><p><b>Shop</b> at base to buy equipment; rank up abilities there whenever you earn a level. <b>Tab</b> scoreboard. <b>P / Esc</b> pause. Optional WASD movement uses <b>1 / 2 / 3 / 4</b> for abilities.</p><label><input type="checkbox" id="wasd">WASD movement</label><p class="note">Gamepad: left stick moves, A attacks, X / Y / B / RB cast Q / W / E / R, LB recalls, Start pauses. Right stick aims.</p><p class="note">Blue allies, coral rivals. Minions soak tower fire. Retreat when wounded, buy upgrades. Colossus awakens in river after 8 minutes.</p><button id="help-back">Back</button></section>
-<section id="shop" class="card" hidden><div class="eyebrow">QUARTERMASTER</div><h2>Steel for the next push</h2><p id="shop-status"></p><div id="items"></div><div class="row"><button id="shop-back">Back to battle</button></div></section>
-<section id="scores" class="card" hidden><h2>The battle so far</h2><div id="scoreboard"></div><div class="row"><button id="scores-back">Back</button></div></section>
-<section id="end" class="card" hidden><div class="eyebrow">BATTLE COMPLETE</div><h2 id="end-title"></h2><p id="end-detail"></p><div class="row"><button id="end-restart" class="primary">Another battle</button><button id="end-title-btn">Title</button></div></section>
-<section id="fatal" hidden><h2>Unable to draw battlefield</h2><p></p><p>Try a browser with WebGL2 and hardware acceleration enabled.</p></section><script>/*__CODE__*/</script></body></html>
-
-
+:root{--ink:#e8e3ce;--muted:#a49e88;--gold:#f0c252;--panel:#11171de8;--line:#4a5868;--blue:#5ca8ff;--red:#f06252;font-family:Georgia,"Times New Roman",serif;color:var(--ink);background:#070a0e;--safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px)}
+html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;overflow:hidden;background:#070a0e}
+body.touch{touch-action:none}
+[hidden]{display:none!important}
+#view{display:block;width:100vw;height:100vh;height:100dvh;touch-action:none;cursor:crosshair}
+button,select{font:inherit;cursor:pointer;background:#1c2632;color:var(--ink);border:1px solid #64758a;padding:9px 14px;border-radius:2px;min-height:44px}
+button:hover:not(:disabled),button:focus-visible,select:focus-visible{background:#283648;outline:2px solid var(--gold);outline-offset:1px}
+button:disabled{cursor:default;opacity:.58}
+button.primary{background:var(--gold);color:#171307;border-color:#ffe28a;font-weight:bold}
+button.small{padding:4px 8px;font:11px "Courier New",monospace;min-height:44px;min-width:46px}
+.card{touch-action:pan-y;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(580px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);outline:3px solid #161e28;padding:26px 28px;box-shadow:0 18px 60px #000c;-webkit-user-select:text;user-select:text}
+.card h1{font:bold clamp(34px,6vw,52px) "Courier New",monospace;letter-spacing:.18em;margin:0 0 6px;color:var(--gold);text-shadow:0 0 18px #f0c25244}
+.card h2{font-weight:normal;font-size:24px;margin:0 0 10px;color:var(--gold)}
+.card p{line-height:1.48;color:#d6d0bc;margin:8px 0}
+.eyebrow{font:11px "Courier New",monospace;letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.note{font-size:13px;color:var(--muted)}
+.note a{color:var(--gold)}
+label.note{display:inline-flex;align-items:center;gap:8px;margin:6px 12px 6px 0}
+#heroes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.hero{display:grid;gap:2px;text-align:center;padding:8px 6px}
+.hero b{font:bold 20px "Courier New",monospace;color:var(--gold)}
+.hero strong{font-size:14px}
+.hero small{font:11px "Courier New",monospace;color:var(--muted)}
+.hero[aria-pressed="true"]{border-color:var(--gold);background:#2b3848;box-shadow:inset 0 0 0 1px var(--gold)}
+dl.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:12px 0}
+dl.keys dt{font:12px "Courier New",monospace;color:var(--gold);white-space:nowrap}
+dl.keys dd{margin:0;color:#d6d0bc}
+#hud{position:absolute;inset:0;pointer-events:none;font:12px "Courier New",monospace}
+.stats{position:absolute;left:calc(10px + var(--safe-l));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);padding:7px 9px;width:248px;box-sizing:border-box;display:grid;gap:3px;pointer-events:auto}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:6px;font-weight:bold}
+#who{color:var(--gold)}
+#gold{color:#ffd86b}
+.barline{display:flex;align-items:center;gap:6px;font-size:11px}
+.barline span{width:28px;color:var(--muted)}
+.bar{flex:1;height:8px;background:#1d1418;border:1px solid #483840;position:relative;overflow:hidden}
+#hp-bar{display:block;height:100%;background:#44cc66;transition:width .12s}
+#hp-bar.low{background:#f04838;animation:pulse .65s infinite alternate}
+#mana-bar{display:block;height:100%;background:#4898f0;transition:width .12s}
+.xp{height:4px;background:#1a202c;border:1px solid #384458}
+#xp-bar{display:block;height:100%;background:var(--gold)}
+@keyframes pulse{to{opacity:.45}}
+#score{color:#d8d2be;font-size:11px}
+#items{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tools{display:flex;gap:4px;margin-top:2px;flex-wrap:nowrap}
+.tools button{flex:1;padding:4px 4px;min-width:44px;min-height:44px;font:11px "Courier New",monospace}
+#objective{position:absolute;left:calc(268px + var(--safe-l));right:calc(128px + var(--safe-r));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);padding:6px 10px;text-align:center;font:13px Georgia,serif;color:#f2ead2;box-sizing:border-box}
+#arm{position:absolute;left:50%;top:calc(58px + var(--safe-t));transform:translateX(-50%);background:#3a1c18e6;border:1px solid var(--red);padding:3px 10px;color:#ffb8a8;font:11px "Courier New",monospace}
+#minimap{position:absolute;right:calc(10px + var(--safe-r));top:calc(10px + var(--safe-t));width:108px;height:108px;background:#090d12eb;border:1px solid var(--line);box-sizing:border-box;image-rendering:pixelated;pointer-events:auto;touch-action:none}
+#log{position:absolute;left:calc(10px + var(--safe-l));top:calc(var(--stats-bottom,168px) + 8px);width:248px;display:grid;gap:2px;font:11px "Courier New",monospace;color:var(--muted);pointer-events:none;box-sizing:border-box}
+#log div{background:#0d131acc;padding:2px 6px;border-left:2px solid var(--line)}
+#log div.blue{border-color:var(--blue);color:#b8d8ff}
+#log div.red{border-color:var(--red);color:#ffc0b8}
+#hotbar{position:absolute;left:50%;bottom:calc(12px + var(--safe-b));transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto;box-sizing:border-box}
+.ability{position:relative;width:68px;min-height:54px;padding:4px 4px;background:#141c26eb;border:1px solid var(--line);display:grid;gap:1px;align-content:center;text-align:center;font:11px "Courier New",monospace;touch-action:none}
+.ability i{font:bold 11px "Courier New",monospace;color:var(--gold);font-style:normal}
+.ability b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ability small{font-size:9px;color:var(--muted)}
+.ability .cool{position:absolute;inset:0;display:grid;place-items:center;background:#080b10cc;color:var(--gold);font:bold 15px "Courier New",monospace;pointer-events:none}
+.ability .cool:empty{display:none}
+.ability.ready{border-color:#7892b0}
+.ability.locked{opacity:.48}
+.ability.active{border-color:var(--gold);background:#283648}
+#toast{position:absolute;left:50%;bottom:calc(80px + var(--safe-b));transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:7px 13px;font:12px "Courier New",monospace;color:var(--gold);opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
+#toast.visible{opacity:1}
+#shop-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin:10px 0;max-height:48dvh;overflow:auto}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 8px;text-align:left;padding:8px 10px}
+.item strong{font-size:14px}
+.item em{font:bold 13px "Courier New",monospace;color:var(--gold);font-style:normal}
+.item small{grid-column:1/-1;font:11px "Courier New",monospace;color:var(--muted)}
+.item.ready{border-color:var(--gold);background:#243028}
+table.board{width:100%;border-collapse:collapse;font:12px "Courier New",monospace;margin:10px 0}
+table.board th,table.board td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+table.board tr.blue td:first-child{color:var(--blue)}
+table.board tr.red td:first-child{color:var(--red)}
+#fatal{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#070a0e;color:var(--ink);padding:24px}
+@media(max-width:600px){
+  .stats{left:calc(8px + var(--safe-l));top:calc(8px + var(--safe-t));width:calc(100vw - 104px);padding:5px 7px;gap:2px}
+  #minimap{right:calc(8px + var(--safe-r));top:calc(8px + var(--safe-t));width:80px;height:80px}
+  #objective{left:calc(8px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(var(--stats-bottom,148px) + 6px);font-size:12px;padding:5px 8px}
+  #log{left:calc(8px + var(--safe-l));right:calc(8px + var(--safe-r));top:calc(var(--objective-bottom,196px) + 6px);width:auto;font-size:10px}
+  #hotbar{left:calc(8px + var(--safe-l));right:calc(8px + var(--safe-r));bottom:calc(8px + var(--safe-b));transform:none;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+  .ability{width:auto;min-width:48px;min-height:48px;padding:3px 2px}
+  #heroes{grid-template-columns:repeat(2,1fr)}
+  .card{padding:18px}
+}
+@media(max-height:460px){
+  .stats{left:calc(8px + var(--safe-l));top:calc(8px + var(--safe-t));width:236px;padding:4px 7px;gap:2px}
+  .tools button{min-height:44px;min-width:44px;padding:2px 3px}
+  #minimap{right:calc(8px + var(--safe-r));top:calc(8px + var(--safe-t));width:84px;height:84px}
+  #objective{left:calc(252px + var(--safe-l));right:calc(100px + var(--safe-r));top:calc(8px + var(--safe-t));font-size:11px;padding:4px 8px}
+  #log{left:calc(8px + var(--safe-l));top:calc(var(--stats-bottom,136px) + 4px);width:236px;font-size:10px;gap:1px}
+  #log div{padding:1px 5px}
+  #hotbar{left:auto;right:calc(8px + var(--safe-r));bottom:calc(8px + var(--safe-b));transform:none;gap:4px}
+  .ability{width:56px;min-height:46px;padding:2px}
+  #toast{bottom:calc(62px + var(--safe-b))}
+  .card{padding:16px}
+}
+@media(prefers-reduced-motion:reduce){#hp-bar.low{animation:none}}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="view" aria-label="Three-lane battlefield drawn in coloured letters"></canvas>
+<section id="hud" hidden aria-label="Battle status">
+  <div class="stats">
+    <div class="topline"><span id="who">Warden · level 1</span><span id="gold">450 gold</span></div>
+    <div class="barline"><span>HP</span><div class="bar"><i id="hp-bar"></i></div><b id="hp">660/660</b></div>
+    <div class="barline"><span>MP</span><div class="bar"><i id="mana-bar"></i></div><b id="mana">260/260</b></div>
+    <div class="xp"><i id="xp-bar"></i></div>
+    <div id="score">BLUE 0 : 0 RED · 0:00</div>
+    <div id="items">No items yet. Shop at base (S).</div>
+    <div class="tools">
+      <button id="shop-btn" class="small" type="button">Shop</button>
+      <button id="board-btn" class="small" type="button">Tab</button>
+      <button id="mute" class="small" type="button">Sound on</button>
+      <button id="pause-btn" class="small" type="button">Pause</button>
+    </div>
+  </div>
+  <div id="objective" role="status">Walk with your blue minions down the middle lane.</div>
+  <div id="arm" hidden>Attack-move: click ground or target</div>
+  <canvas id="minimap" width="108" height="108" aria-label="Battle minimap with fog of war"></canvas>
+  <div id="log" aria-live="polite"></div>
+  <div id="hotbar" aria-label="Hero abilities and recall"></div>
+</section>
+<div id="toast" role="status"></div>
+<section id="title" class="card" aria-labelledby="title-heading">
+  <div class="eyebrow">Glyph Arcade · single-player lane battler</div>
+  <h1 id="title-heading">BANNERFALL</h1>
+  <p>Three lanes, jungle camps between them, and a Banner behind each base's last towers. Escort your minion waves, last-hit for gold, take the river Colossus, and burn the red Banner.</p>
+  <div id="heroes" role="group" aria-label="Choose your hero"></div>
+  <p id="hero-note" class="note"></p>
+  <div class="row">
+    <button id="new-run" class="primary" type="button">New battle</button>
+    <button id="continue" type="button" hidden>Continue</button>
+    <button id="how-to" type="button">How to play</button>
+  </div>
+  <label class="note">Difficulty<select id="difficulty"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
+  <p id="best" class="note"></p>
+  <p class="note">Matches save automatically. <a href="index.html">More games in the arcade</a></p>
+</section>
+<section id="pause" class="card" hidden aria-labelledby="pause-heading">
+  <div class="eyebrow">Battle paused</div>
+  <h2 id="pause-heading">Hold the line</h2>
+  <div class="row">
+    <button id="resume-btn" class="primary" type="button">Resume</button>
+    <button id="pause-help" type="button">Controls</button>
+    <button id="pause-title" type="button">Save and quit</button>
+  </div>
+</section>
+<section id="shop" class="card" hidden aria-labelledby="shop-heading">
+  <div class="eyebrow">Base quartermaster · <span id="shop-gold">450 gold</span></div>
+  <h2 id="shop-heading">Armoury</h2>
+  <p id="shop-note" class="note"></p>
+  <div id="shop-list"></div>
+  <div class="row"><button id="shop-close" class="primary" type="button">Back to battle (S)</button></div>
+</section>
+<section id="board" class="card" hidden aria-labelledby="board-heading">
+  <div class="eyebrow">Battlefield report</div>
+  <h2 id="board-heading">Scoreboard</h2>
+  <table class="board">
+    <thead><tr><th>Hero</th><th>Lvl</th><th>K / D / A</th><th>CS</th><th>Items</th></tr></thead>
+    <tbody id="board-body"></tbody>
+  </table>
+  <div class="row"><button id="board-close" class="primary" type="button">Back (Tab)</button></div>
+</section>
+<section id="help" class="card" hidden aria-labelledby="help-heading">
+  <div class="eyebrow">Field manual</div>
+  <h2 id="help-heading">How to command</h2>
+  <dl class="keys">
+    <dt>Click / Right-click</dt><dd>Move to ground, or attack the enemy under the cursor.</dd>
+    <dt>A + Click</dt><dd>Attack-move toward a spot, fighting the nearest foe along the way.</dd>
+    <dt>Arrow keys / WASD</dt><dd>Move your hero directly.</dd>
+    <dt>Q / W / E / R · 1–4</dt><dd>Cast abilities toward the cursor. R (ultimate) unlocks at level 6.</dd>
+    <dt>B · S · Tab</dt><dd>Recall to base (4s) · Open base shop · Scoreboard.</dd>
+    <dt>Touch</dt><dd>Tap to move or attack; tap an ability button on the bar or drag from a button to aim.</dd>
+    <dt>Gamepad</dt><dd>Left stick moves, A attacks nearest foe, X/Y/B/RB cast Q/W/E/R, LB recalls, Select opens shop, Start pauses.</dd>
+  </dl>
+  <label class="note"><input type="checkbox" id="wasd"> Enable WASD movement (use 1/2/3/4 or buttons for abilities)</label>
+  <p class="note">Towers shoot minions first, but switch to you if you attack an enemy hero under their tower. Break both towers in any lane to expose the enemy Banner.</p>
+  <div class="row"><button id="help-back" class="primary" type="button">Back</button></div>
+</section>
+<section id="end" class="card" hidden aria-labelledby="end-title">
+  <div class="eyebrow">Battle complete</div>
+  <h2 id="end-title"></h2>
+  <p id="end-detail"></p>
+  <p id="end-score" class="note"></p>
+  <div class="row">
+    <button id="end-again" class="primary" type="button">New battle</button>
+    <button id="end-menu" type="button">Title</button>
+  </div>
+</section>
+<div id="fatal" hidden><h2>Bannerfall could not start</h2><p></p></div>
+<script>/*__CODE__*/</script>
+</body>
+</html>
