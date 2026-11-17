@@ -1,30 +1,41 @@
 # Handoff Log
 
 ## Bannerfall - 2026-11-17
-Branch: `feature/bannerfall-2`  Last commit: `0f83330`
-Status: building
+Branch: `feature/bannerfall-2`  Last commit: `0c049e2`
+Status: feature-complete
 What works:
-- Core data structures in `games/bannerfall/src/rules.js` (96×64 mirrored 3-lane map, 4 heroes with Q/W/E/R definitions, 10 shop items, minion waves, towers, jungle camps, Colossus, fog of war vision, save/restore).
-- Scene shader and ASCII unit/structure frames in `games/bannerfall/src/scene.js`.
-Gaps compared with `docs/NEXT-GAMES.md` spec (recorded before coding):
-1. **AI stalemate & test timeout (`rules.js`, `bot.cjs`, `rules.test.cjs`)**:
-   - Towers deal `target.maxHp * 0.42` to minions (`landHit`), completely cancelling both late-game minion HP scaling and the +40% Colossus minion HP buff, so waves never tank towers long enough late in the match.
-   - When a friendly wave dies (`front === null`), `think()` sends heroes all the way back to `holdPoint` (their own standing tower) instead of holding near midfield or continuing to pressure an exposed structure, causing endless walk-back stalemates.
-   - `flowTo()` clears its entire BFS cache whenever `map.flows.size > 160`, causing repeated full-grid BFS searches every frame when units chase moving targets.
-   - `rules.test.cjs` is missing the spec's 20-match AI-only hero balance check ("across 20 AI-only matches, no single hero wins more than 70%").
-2. **`shell.html` and `app.js` mismatch**:
-   - `games/bannerfall/src/shell.html` comes from an incompatible draft and is missing most DOM IDs required by `app.js` (`#heroes`, `#hero-note`, `#who`, `#hp`, `#hp-bar`, `#mana`, `#mana-bar`, `#xp-bar`, `#gold`, `#score`, `#items`, `#arm`, `#best`, `#end-score`, `#shop-list`, `#shop-note`, `#shop-gold`, `#board`, `#board-body`, `#board-btn`, `#board-close`, `#shop-close`, `#end-again`, `#end-menu`), causing `app.js` to throw on boot.
-3. **Touch, WASD, drag-to-aim, ability rank-up, and ally pings**:
-   - `app.js` does not wire up the `#touch` d-pad/action buttons, drag-from-ability-button aiming, or optional WASD movement mode (`#wasd`).
-   - HUD layout in `shell.html` is not tuned for `tools/layout-check.cjs` across `360×640`, `844×390`, and `1280×720` (where `.stats`, `#minimap`, `#log`, `#objective`, `#hotbar`, `#touch .pad`, `#touch .side` must not overlap and all tap targets must be `>= 44px`).
-   - `tests/browser-smoke.cjs` reads `bannerfall.state.player` and `bannerfall.state.towers`, which are not exposed on `state`.
-   - Allies do not emit simple callout pings (such as `"Help mid"` or `"Colossus up"`) to the event log, and level-ups do not expose ability rank progression.
+- Full match loop in `games/bannerfall/src/rules.js`: 96×64 mirrored 3-lane map, all 4 heroes (`Warden`, `Ranger`, `Ember`, `Shade`) with Q/W/E/R abilities, XP/levels 1–10 with ability rank scaling, last-hit gold, 10-item base shop, 4s recall interrupted by damage, outer/inner tower protection and hero-aggro switching, jungle camps, river Colossus at 6:00 with push buff, fog of war, 3 difficulties, ally pings, and deterministic `save`/`restore`.
+- AI stalemate resolved (`landHit` minion damage uses base `MINIONS[kind].hp` so late/Colossus-buffed waves tank towers; `holdPoint` advances with fallen towers; `flowTo` caches BFS fields by 2×2 coarse key; `moveToward` caches repaths; local intrinsic bindings in `rules.js` cut `vm` overhead).
+- Rebuilt `games/bannerfall/src/shell.html` to match all `app.js` HUD/modal IDs and `tools/layout-check.cjs` tap-target (`>= 44px`) and non-overlap rules at `360×640`, `844×390`, and `1280×720`.
+- Wired touch tap-to-move/attack, drag-from-ability-button aiming, optional WASD movement mode (`#wasd` in Controls), keyboard/mouse/gamepad (`GlyphPad`), adaptive quality (`GlyphQuality`), WebAudio sound, and `localStorage` save/continue.
 Known bugs and rough edges (for Claude):
-- Tracked below as implementation completes.
+- **HUD/modal polish (`shell.html`, `app.js`, from 10-min browser playtest at 776×695)**:
+  - Ability cards truncate names (`Piercin...`, `Snare T...`, `Arrow S...`), and active cooldown digits sit directly over the `Q`/`W` key letter and ability name.
+  - Top-left item line truncates horizontally (`Hunting Bow · Leather Vest · Swift Bo...`), hiding the 4th+ item.
+  - Top-left HUD/kill-feed sits over the playable corner near blue base, and opening Shop (`S`) or Scoreboard (`Tab`) overlaps the top HUD buttons and log underneath.
+  - Grammar polish: `"1 kills, 13 deaths, 1 assists"` on the end screen and `"ready in 1 seconds"` in ability `aria-label`.
+- **Feed & callouts (`rules.js`, `app.js`)**:
+  - Tower-destruction log lines use the victim tower's team colour instead of the acting team's colour (e.g., `"Blue destroyed the red outer bottom tower."` renders with a red border).
+  - Both teams can spawn identical heroes (e.g., `"Shade (Blue) took down Shade."`).
+  - `"Warden: Colossus up in the river!"` repeats every 45s even after the hero who spoke recently died.
+- **Readability & controls (`scene.js`, `app.js`, `rules.js`)**:
+  - Pressing keyboard `Tab` in the browser playtest did not visibly open the Scoreboard (clicking the `Tab` button worked; check focus/key handling when canvas or buttons have focus).
+  - Green Ranger `(R-` and green HP bars blend against dark green jungle `@#%&` tiles, and stacked waves (`[[]][[#]]`) or overlapping damage numbers are hard to parse or target individually.
+  - Casting `W` (`Snare Trap`) outside its 7-tile range clamps or silently fails on some inputs; ability rank-up is automatic on level-up with no choice/toast; `Healing Potion` doesn't state in the shop text that it activates immediately instead of using a bag slot.
+  - Normal mid-lane bot (`Ember`) snowballs hard early if the player falls behind; match ended at 9:49 while player Ranger was Level 5 (never reaching Level 6 for `R`).
+  - No death location marker while dead; late-game 13s death timers + Colossus buff end the base very abruptly.
+- **Existing-game check (`burrow` in `tests/browser-smoke.cjs`)**:
+  - `npm run test:browser` fails earlier in `tests/browser-smoke.cjs:172` with `Error: Burrow did not dig under the held mouse, or the save lost the dirt` before reaching Joyride/Bannerfall (left untouched per ground rules).
 Not verified:
-- Full `npm test`, `npm run build`, and `npm run test:browser` (pending fixes below).
+- Full `npm run test:browser` end-to-end pass in a single invocation because `tests/browser-smoke.cjs` stops at Burrow line 172 (Bannerfall's own smoke path, shop, scoreboard, touch tap, and drag-to-aim were verified in an isolated Playwright run, and `tools/layout-check.cjs` passed across all 6 games).
+- Gamepad hardware input was not manually tested with a physical controller.
 Commands run and results:
-- `git switch -c feature/bannerfall-2 plan/future-games` -> switched to new branch.
+- `node games/bannerfall/test/rules.test.cjs` -> `13/13 Bannerfall rules checks passed` in `27.8s` (`20 AI matches (mean 11.4m) hero win rates: warden:17/28 (61%) | ranger:15/29 (52%) | ember:12/30 (40%) | shade:16/33 (48%)`; player bot vs Easy: `warden won 9.3m 3/1 | ranger won 9.5m 1/8 | ember won 8.0m 2/6 | shade won 7.5m 1/3`).
+- `npm test` -> exit `0` in `342s` (`MIT license verified`, Delve `12/12`, Inkfire `10/10`, Wordfall `12/12`, Burrow `20/20`, Joyride `11/11`, Bannerfall `13/13`).
+- `npm run build` -> built all 6 `dist/*.html` (`dist/bannerfall.html` `169610` bytes) and `dist/index.html`.
+- `node tools/layout-check.cjs` -> `PASS Touch HUD has no overlaps and every tap target is at least 44px` (`360×640`, `844×390`, `1280×720` across all 6 games).
+- Bannerfall browser smoke checks (isolated Playwright script) -> passed boot, move, `KeyQ`, pause, save/continue, base shop buy, 6-row scoreboard, touch tap-to-move, and drag-from-ability-button aim.
+- 10-minute browser playtest (`http://127.0.0.1:8765/bannerfall.html`, Ranger, Normal, seed `33d1fm`) -> Defeat at `9:49`, Level 5, `1/13/1`, `11` CS, `BLUE 11 : 22 RED`, zero console/page errors.
 
 ## Planning - 2026-11-17
 Branch: `plan/future-games`  Last commit: `295da51` (base on `feature/bannerfall`)
