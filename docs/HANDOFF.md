@@ -1,5 +1,31 @@
 # Handoff Log
 
+## Ricochet - 2026-11-17
+Branch: `feature/ricochet`  Last commit: `7aefa98`
+Status: feature-complete
+What works:
+- Pure rules in `games/ricochet/src/rules.js`: 28×16 court with 45° corner wedges, 3 shield segments per endzone (`###` -> `---` -> open, 2-bounce bank breaks 2 shields, open bullseye pocket `[$]` scores 2 points), 4 sub-step disc physics, curve spin, wall-bank speed scaling up to `MAX_SPEED`, hold-to-charge + overcharge fumble, frame-window parry, 4 courts (`Foundry`, `Twin Pillar`, `Conveyor`, `Prism Finals`), 4 archetypes (`Striker`, `Spinner`, `Bastion`, `Phantom`), 3 difficulties (`Easy`, `Normal`, `Hard`), and `save`/`restore`.
+- Scene shader and ASCII frames in `games/ricochet/src/scene.js`: letter-drawn court tiles, animated conveyors, 45°-rotating prisms, dotted aim line, charge bar, bouncing/critical disc halos, and archetype sprites.
+- App and shell in `games/ricochet/src/app.js` and `games/ricochet/src/shell.html`: keyboard (`WASD`/Arrows, `J`/`Enter`, `K`/`E`, `Space`/`Shift`, `P`/`Esc`), mouse aim & click/right-click, mobile touch pad + Throw/Spin/Dash buttons, `GlyphPad` gamepad support, `GlyphQuality`, synthesised WebAudio SFX + continuous charge hum, reduced motion, first-60-seconds onboarding toast, and `localStorage` save/best scores.
+- Wired into `tools/build.cjs`, `package.json`, `tests/browser-smoke.cjs`, `tools/layout-check.cjs`, `tools/capture-previews.cjs`, `README.md`, and `CHANGELOG.md`.
+Known bugs and rough edges (for Claude):
+- **Initial layout / sizing (`shell.html`, from 10-min browser playtest)**: At initial `776×695` load before resizing to `1280×800`, the playtester reported `body` collapsing and `.card` sitting off-screen (`CAPTURE_EMPTY` until viewport resize); check `html, body { width: 100%; height: 100%; }` or initial viewport sizing in `shell.html`.
+- **Keyboard vs. mouse aiming (`app.js`, `rules.js`)**: Holding `S` while tapping `J`/`K` steers the throw steep into the side wall, whereas tapping `J` without vertical input fires flat straight into the rival; consider smoothing keyboard aim elevation and surfacing an explicit aim/charge cue.
+- **Court 1/4 Normal AI tuning & overcharge window (`rules.js`)**: `Bastion` AI on Normal catches/parries `BANK x1`/`BANK x2` and spin throws very consistently (`0–5` set 1 in playtest), and the `1.25s` overcharge fumble window feels unforgiving; consider softening Normal AI reaction/catch reach slightly and giving a visual/audio warning pulse before overcharge fumble.
+- **Minor HUD text (`shell.html`)**: `#court-name` and `#rally-badge` sit in a flex row without a literal separator in textContent (`"1/4 · Foundry CourtBANK x1"` for screen readers).
+- **Existing-game check (`burrow` in `tests/browser-smoke.cjs`)**: Same pre-existing failure at `tests/browser-smoke.cjs:172` (`Burrow did not dig under the held mouse`) blocks running `npm run test:browser` end-to-end; Ricochet's own desktop/mobile smoke checks and `tools/layout-check.cjs` passed independently.
+Not verified:
+- Full `tests/browser-smoke.cjs` single-pass run (blocked earlier at Burrow line 172; Ricochet's own smoke checks passed in an isolated Playwright script).
+- Physical gamepad controller hardware test.
+Commands run and results:
+- `node games/ricochet/test/rules.test.cjs` -> `8/8 Ricochet rules checks passed` in `0.3s` (bot tournament on Easy: `striker won c4 8.1m score:17433 | spinner won c4 6.1m score:19383 | bastion lost c1 7.6m score:1800 | phantom won c4 6.9m score:19568`).
+- `npm test` -> exit `0` in `223s` (MIT license verified, Delve `12/12`, Inkfire `10/10`, Wordfall `12/12`, Burrow `20/20`, Joyride `11/11`, Bannerfall `13/13`, Ricochet `8/8`).
+- `npm run build` -> built all 7 `dist/*.html` (`dist/ricochet.html` `101328` bytes) and `dist/index.html`.
+- `node tools/layout-check.cjs` -> `PASS Touch HUD has no overlaps and every tap target is at least 44px` across all 7 games (`360×640`, `844×390`, `1280×720`).
+- `npm run previews` -> generated `dist/previews/ricochet.png` and all 6 others, rebuilt `dist/index.html`.
+- Ricochet browser smoke checks (isolated Playwright script) -> passed portal card presence, desktop boot/move/throw/pause/save/continue (`cells: 18`), and mobile touch boot (`cells: 15`) with zero console/page errors.
+- 10-minute browser playtest (`http://127.0.0.1:8765/ricochet.html`, Spinner, Normal) -> reached Court `1/4 · Foundry Court` (`SETS 0 - 1`, `0 : 2` in Set 2), exercised charge throws, `BANK x1`/`x2`, corner wedges, spin shots, dash, `PERFECT PARRY!`, pause/help/resume, zero console/network errors.
+
 ## Bannerfall - 2026-11-17
 Branch: `feature/bannerfall-2`  Last commit: `0c049e2`
 Status: feature-complete
