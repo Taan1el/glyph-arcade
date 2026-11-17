@@ -15,6 +15,7 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | **Wordfall** | A two-minute lane game. Letters fall in nine lanes: catch the next letter of the word and dodge the rest. Finish words in a row to build a combo. |
 | **Burrow** | A side-view digging and building game. Fell trees, mine copper, iron and crystal, survive the night, and forge the key that wakes The Maw at the bottom of the world. Flood-filled light, flowing water and lava, falling sand, and a world that saves itself. |
 | **Joyride** | A top-down open-world driving town across four districts with lanes, traffic lights, pedestrians, ringing payphones, twelve contact jobs, an armoured-van heist at the Docks, and five stars of police heat. |
+| **Bannerfall** | A single-player three-lane battle. Choose Warden, Ranger, Ember or Shade, escort waves, buy equipment and bring down the rival Banner. |
 | [Next Stop](https://github.com/Taan1el/next-stop) | A rural steam railway in coloured letters ([play](https://taan1el.github.io/next-stop/)). Lives in its own repository. |
 
 ## How to Play
@@ -70,6 +71,18 @@ Small browser games drawn entirely in coloured letters. Every game builds into *
 | `E` / `Enter` | Enter or leave a car, or answer a ringing payphone (`$`). |
 | `Shift` · `H` | Sprint on foot · honk horn. |
 | `M` · `P` / `Esc` | Full town map · pause. |
+
+### Bannerfall Controls
+
+| Key / Input | Action |
+|---|---|
+| Right click / tap | Move or target an enemy. |
+| Arrow keys | Move directly. |
+| `A` + left click | Attack-move. |
+| `Q` / `W` / `E` / `R` | Cast toward cursor; ultimate unlocks at level 6. |
+| `B` | Recall to base; damage interrupts. |
+| `Tab` · `P` / `Esc` | Scoreboard · pause. |
+| Touch / gamepad | Movement and ability controls shown in game help. |
 
 ### Touch, gamepad and difficulty
 

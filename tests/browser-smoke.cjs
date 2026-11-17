@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
 const { pathToFileURL } = require('node:url');
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, args: ['--mute-audio'] });
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     const errors = [];
@@ -23,7 +23,7 @@ const { pathToFileURL } = require('node:url');
       const skipLink = Boolean(document.querySelector('a.skip-link'));
       return { cards, overflow, manifest, skipLink };
     });
-    if (!['delve', 'inkfire', 'wordfall', 'burrow', 'joyride'].every(game => portalInfo.cards.includes(game + '.html'))) {
+    if (!require('../tools/build.cjs').GAMES.map(game => game.id).every(game => portalInfo.cards.includes(game + '.html'))) {
       throw new Error('Portal is missing delve.html or inkfire.html card: ' + JSON.stringify(portalInfo.cards));
     }
     if (portalInfo.overflow) throw new Error('Portal overflows horizontally at 360px viewport width');
@@ -217,6 +217,32 @@ const { pathToFileURL } = require('node:url');
     if (joyOut.cells < 6) throw new Error('Joyride scene drew too few distinct letters: ' + joyOut.cells);
     if (errors.length) throw new Error(errors.join('\n'));
     console.log('PASS Joyride boots, enters car, drives, opens map, saves and renders', JSON.stringify(joyOut));
+    // Bannerfall: ordinary movement/ability input, pause, save and resume.
+    await page.goto(pathToFileURL(path.join(__dirname, '../dist/bannerfall.html')).href);
+    await page.waitForFunction(() => window.bannerfall);
+    await page.click('#new-run');
+    await page.waitForTimeout(500);
+    const bannerStart = await page.evaluate(() => ({x: bannerfall.state.player.x, y: bannerfall.state.player.y}));
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(700);
+    await page.keyboard.up('ArrowRight');
+    await page.keyboard.press('KeyQ');
+    await page.keyboard.press('KeyP');
+    await page.waitForTimeout(100);
+    if (!await page.evaluate(() => bannerfall.mode === 'pause')) throw new Error('Bannerfall did not pause');
+    await page.click('#pause-title');
+    await page.click('#continue');
+    await page.waitForTimeout(300);
+    const bannerOut = await page.evaluate(start => ({
+      mode: bannerfall.mode, time: bannerfall.state.time,
+      moved: Math.hypot(bannerfall.state.player.x-start.x,bannerfall.state.player.y-start.y)>0.1,
+      cells: new Set(bannerfall.view.inspect().glyphs).size,
+      towers: bannerfall.state.towers.length
+    }), bannerStart);
+    if (bannerOut.mode !== 'play' || !bannerOut.moved || bannerOut.cells < 6 || bannerOut.towers !== 12)
+      throw new Error('Bannerfall play/save/render check failed: '+JSON.stringify(bannerOut));
+    if (errors.length) throw new Error(errors.join('\n'));
+    console.log('PASS Bannerfall boots, moves, casts, pauses, saves and renders', JSON.stringify(bannerOut));
   } finally {
     await browser.close();
   }

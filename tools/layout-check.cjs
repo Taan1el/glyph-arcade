@@ -6,7 +6,8 @@ const { pathToFileURL } = require('node:url');
 
 const VIEWPORTS = [
   { name: 'portrait', width: 360, height: 640 },
-  { name: 'landscape', width: 844, height: 390 }
+  { name: 'landscape', width: 844, height: 390 },
+  { name: 'desktop', width: 1280, height: 720 }
 ];
 const REGIONS = ['.stats', '#minimap', '#log', '#objective', '#hotbar', '#touch .pad', '#touch .side'];
 
@@ -55,10 +56,10 @@ async function check(browser, game, viewport, problems) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, args: ['--mute-audio'] });
   const problems = [];
   try {
-    for (const game of ['delve', 'inkfire', 'wordfall', 'burrow', 'joyride']) for (const viewport of VIEWPORTS) await check(browser, game, viewport, problems);
+    for (const game of require('./build.cjs').GAMES.map(game => game.id)) for (const viewport of VIEWPORTS) await check(browser, game, viewport, problems);
   } finally {
     await browser.close();
   }

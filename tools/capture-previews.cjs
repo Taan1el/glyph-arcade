@@ -11,7 +11,7 @@ const out = path.join(root, 'dist/previews');
 
 (async () => {
   fs.mkdirSync(out, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, args: ['--mute-audio'] });
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
@@ -146,6 +146,13 @@ const out = path.join(root, 'dist/previews');
     await page.waitForTimeout(200);
     await page.screenshot({ path: path.join(out, 'joyride.png') });
     console.log('Wrote dist/previews/joyride.png');
+
+    await page.goto(pathToFileURL(path.join(root, 'dist/bannerfall.html')).href);
+    await page.waitForFunction(() => window.bannerfall);
+    await page.click('#new-run');
+    await page.waitForTimeout(2000);
+    await page.screenshot({ path: path.join(out, 'bannerfall.png') });
+    console.log('Wrote dist/previews/bannerfall.png');
 
     // Rebuild launcher so dist/index.html embeds the newly generated preview images
     buildLauncher({ siteUrl: process.env.PAGES_URL || '' });
