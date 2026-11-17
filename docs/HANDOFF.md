@@ -1,5 +1,39 @@
 # Handoff Log
 
+## Lockwork - 2026-11-17
+Branch: `feature/lockwork`  Last commit: `4162995`
+Status: feature-complete
+What works:
+- Pure rules in `games/lockwork/src/rules.js`: 15×12 grid across 30 authored vaults in 5 chapters (`Copper Hall`, `The Splitters`, `Phase Chambers`, `Pulse Mechanics`, `Clockwork Finale`), rotatable mirrors (`/` `\`), 3-way/split conduits (`TT`), crates (`+==+`), weight plates (`[__]`) linked to shutter gates (`####`), cross bridges (`++`), pushable conduits (`--` `||`), beam-suppressed inverters (`+!!+`), alternating pulse coils (`<Q>`), delay capacitors, BFS optimal solver `hint()`, unlimited undo history, 3 difficulties (`Relaxed`, `Standard`, `Master`), and deterministic `save`/`restore`.
+- Scene shader and ASCII frames in `games/lockwork/src/scene.js`: 4×3-cell tiles drawn in uppercase letters, digits and symbols, animated beams/coils/receptors, shutter states, capacitor bars, and green hint highlight.
+- App and shell in `games/lockwork/src/app.js` and `games/lockwork/src/shell.html`: keyboard (`WASD`/Arrows, `E`/`Space` rotate/wait, `Z` undo, `R` reset, `H` hint, `L`/`Tab` vaults, `P`/`Esc` pause), mouse/touch click-to-move-or-rotate and swipe, bottom touch pads on touch devices, `GlyphPad` gamepad support, `GlyphQuality`, WebAudio sound effects, reduced motion, onboarding toast, and `localStorage` persistence.
+- Wired into `tools/build.cjs`, `package.json`, `tests/browser-smoke.cjs`, `tools/layout-check.cjs`, `tools/capture-previews.cjs`, `README.md`, and `CHANGELOG.md`.
+Known bugs and rough edges (for Claude):
+- **Vault Select switcher (`app.js`, from playtest)**: Clicking, `mouse.click`-ing, or pressing `Enter`/`Space` on vault buttons in the `Vaults` modal (including cleared Vault 1 or later Vault 12) closes the modal without switching away from the active vault; also long titles with earned Gold Cogs wrap `*` onto a second line.
+- **Vault balance & clarity (`rules.js`, `scene.js`, from playtest)**:
+  - Vault 8 (`Cross Bridge`) starts with both crossing beams lighting both receptors at Step 0 without placing or using the `++` bridge.
+  - Vault 14 (`Shadow Relay`) starts with its mirror angled away from the Inverter `+!!+`, so the unlit inverter already powers the receptor and exit at Step 0.
+  - Vault 10 (`Pipe Fitters`) places a pushable vertical conduit (`||`) inside an active vertical beam (`||`) where both render identically, hiding the conduit until pushed out.
+  - Vault 11 (`Double Fork`) loaded at `STEPS 1 / PAR 22` immediately after exiting Vault 10 until `R` reset returned it to `STEPS 0 / PAR 22`; Vaults 1–4 also share very similar right-side exit/receptor placements.
+- **Title / modal & mobile UI (`app.js`, `shell.html`, from playtest)**:
+  - Before bringing the tab into focus/resizing on initial boot, `.click()` on `"How to play"` and `"New journey"` had no effect (`New journey` briefly reported negative bounding-box coordinates before `Enter` started play).
+  - Pressing `Escape` while viewing `"How to play"` from the title screen loaded the vault underneath while leaving `"How to play"` open on top.
+  - Narrow desktop/non-touch `390×844` viewports keep bottom touch pads hidden because pads gate on touch capability rather than width.
+  - Objective copy says `"All 1 receptors lit! Step onto the green exit {O}."` (plural `"1 receptors"` and `{O}` vs 2-char exit glyph).
+- **Existing-game check (`burrow` in `tests/browser-smoke.cjs`)**: Pre-existing failure at `tests/browser-smoke.cjs:172` (`Burrow did not dig under the held mouse`) blocks running `npm run test:browser` end-to-end.
+Not verified:
+- Full `tests/browser-smoke.cjs` single-pass run (blocked at Burrow line 172; Lockwork's own smoke checks passed in an isolated Playwright run).
+- Manual browser playthrough of Chapters 4 & 5 (Vaults 16–30, blocked by the Vault Select modal switching bug; all 30/30 vaults solved by the BFS bot in Node tests).
+- Physical gamepad controller hardware test.
+Commands run and results:
+- `node games/lockwork/test/rules.test.cjs` -> `5/5 Lockwork rules checks passed` in `7.6s` (`All 30 vaults solved: Standard 30/30 Gold Cogs, Master 30/30, seeded variant 30/30`).
+- `npm test` -> exit `0` elapsed `229s` (MIT license pass, Delve `12/12`, Inkfire `10/10`, Wordfall `12/12`, Burrow `20/20`, Joyride `11/11`, Bannerfall `13/13`, Ricochet `8/8`, Lockwork `5/5`).
+- `npm run build` -> built all 8 `dist/*.html` (`dist/lockwork.html` `95727` bytes) and `dist/index.html`.
+- `node tools/layout-check.cjs` -> `PASS Touch HUD has no overlaps and every tap target is at least 44px` across all 8 games (`360×640`, `844×390`, `1280×720`).
+- `npm run previews` -> wrote all 8 previews including `dist/previews/lockwork.png`, rebuilt `dist/index.html`.
+- Lockwork browser smoke checks (`lockwork-smoke.cjs`) -> desktop boot + 30-vault select + hint + save (`{"mode":"play","moved":true,"hint":true,"cells":19}`) and mobile touch boot (`{"touch":true,"cells":19}`), zero console/page errors.
+- Browser playtest (`http://127.0.0.1:8765/lockwork.html`, Standard) -> played Vaults 1–15 across Chapters 1–3, cleared 14 vaults (`13` Gold Cogs), tested Undo/Hint/Reset/Pause/Save and quit/Continue/Difficulty selector and `390×844` viewport, 0 console/page errors.
+
 ## Ricochet - 2026-11-17
 Branch: `feature/ricochet`  Last commit: `7aefa98`
 Status: feature-complete
