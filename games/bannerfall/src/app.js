@@ -5,7 +5,9 @@
   const B = global.Bannerfall, { TILE_W, TILE_H } = global.BannerfallView, SAVE_KEY = 'bannerfall-save', BEST_KEY = 'bannerfall-best';
   const STEP_MS = B.STEP * 1000;
   const TEAM = [[96, 172, 255], [240, 96, 84], [232, 192, 96]];
-  const BAR = { self: [120, 232, 110], ally: [96, 172, 255], foe: [240, 84, 72], neutral: [232, 192, 96] };
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  // Your own bar is gold so it never melts into the green jungle.
+  const BAR = { self: [255, 214, 90], ally: [96, 172, 255], foe: [240, 84, 72], neutral: [232, 192, 96] };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   const clock = seconds => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
@@ -150,12 +152,11 @@
         if (slot !== undefined) this.castSlot(slot, true);
         if (event.code === 'KeyB') this.pending.recall = true;
         if (event.code === 'KeyS' && !this.wasd) this.toggleShop();
-        if (event.code === 'Tab') this.toggleBoard(true);
+        if (event.code === 'Tab') this.toggleBoard();
         if (event.code === 'KeyA' && !this.wasd) { this.armed = true; this.el.arm.hidden = false; }
       });
       global.addEventListener('keyup', event => {
         this.keys.delete(event.code);
-        if (event.code === 'Tab') this.toggleBoard(false);
       });
 
       const track = event => {
@@ -549,7 +550,9 @@
       }
     }
     number(x, y, text, colour) {
-      [...String(text)].forEach((char, i) => this.particles.push({ x: x - 0.2 + i * 0.34, y: y - 1.2, vx: 0, vy: -1.6, life: 0.75, char, colour, gravity: 0 }));
+      // A little sideways scatter keeps numbers from landing on top of each other.
+      const jitter = (Math.random() - 0.5) * 0.9;
+      [...String(text)].forEach((char, i) => this.particles.push({ x: x - 0.2 + jitter + i * 0.34, y: y - 1.2, vx: 0, vy: -1.6, life: 0.75, char, colour, gravity: 0 }));
     }
     handle(events) {
       const s = this.state, p = B.playerHero(s);
@@ -574,10 +577,10 @@
             break;
           case 'snap': this.burst(e.x, e.y, ['^', '*'], [255, 220, 120], 6); break;
           case 'level':
-            if (e.id === p.id) { this.sound.play('level'); this.pulse(1, 0.85, 0.4, 0.18, 0.4); this.toast(e.level === 6 ? `Level 6! Your ultimate (R) is ready: ${B.HEROES[p.kind].abilities[3].name}.` : `Level ${e.level}.`); this.buildHotbarKey = ''; }
+            if (e.id === p.id) { this.sound.play('level'); this.pulse(1, 0.85, 0.4, 0.18, 0.4); this.toast(e.level === 6 ? `Level 6! Your ultimate (R) is ready: ${B.HEROES[p.kind].abilities[3].name}.` : `Level ${e.level}: your abilities hit harder.`); this.buildHotbarKey = ''; }
             break;
           case 'heroKill':
-            if (e.victim === p.id) { this.sound.play('death'); this.pulse(0.3, 0, 0, 0.5, 0.8); this.toast('You fell. Your hero returns to base shortly.'); }
+            if (e.victim === p.id) { this.deathMark = { x: e.x, y: e.y }; this.sound.play('death'); this.pulse(0.3, 0, 0, 0.5, 0.8); this.toast('You fell. Your hero returns to base shortly.'); }
             else if (e.killer === p.id) { this.sound.play('kill'); this.toast('Hero down!'); }
             else this.sound.play('kill');
             this.burst(e.x, e.y, ['*', '%', '.'], e.team === 0 ? [255, 120, 90] : [120, 180, 255], 10);
@@ -611,7 +614,7 @@
     showEnd() {
       const s = this.state, p = B.playerHero(s), won = s.status === 'won';
       this.el['end-title'].textContent = won ? 'The red banner burns' : 'Your banner has fallen';
-      this.el['end-detail'].textContent = `${won ? 'Victory' : 'Defeat'} in ${clock(s.endTime || s.time)} as ${B.HEROES[p.kind].name}: ${p.kills} kills, ${p.deaths} deaths, ${p.assists} assists, ${p.cs} minions, level ${p.level}.`;
+      this.el['end-detail'].textContent = `${won ? 'Victory' : 'Defeat'} in ${clock(s.endTime || s.time)} as ${B.HEROES[p.kind].name}: ${plural(p.kills, 'kill')}, ${plural(p.deaths, 'death')}, ${plural(p.assists, 'assist')}, ${plural(p.cs, 'minion')}, level ${p.level}.`;
       this.el['end-score'].textContent = `Score ${B.score(s)} · team kills ${s.kills[0]} to ${s.kills[1]} · ${B.DIFFICULTIES[s.difficulty].label} · seed ${s.seed}`;
       this.show('end');
     }
@@ -658,8 +661,9 @@
         button.querySelector('b').textContent = spec.name;
         button.querySelector('small').textContent = locked ? 'Level 6' : `${spec.mana} mana`;
         button.querySelector('.cool').textContent = cd > 0 ? Math.ceil(cd) : '';
+        button.classList.toggle('cooling', cd > 0);
         button.title = `${spec.name} (Rank ${rank}): ${spec.text}`;
-        button.setAttribute('aria-label', `${spec.key} ${spec.name}${locked ? ', unlocks at level 6' : cd > 0 ? `, ready in ${Math.ceil(cd)} seconds` : ''}`);
+        button.setAttribute('aria-label', `${spec.key} ${spec.name}${locked ? ', unlocks at level 6' : cd > 0 ? `, ready in ${plural(Math.ceil(cd), 'second')}` : ''}`);
         button.classList.toggle('ready', ready);
         button.classList.toggle('locked', locked);
       }
@@ -805,6 +809,7 @@
     }
     collectFx(state, playing) {
       const fx = [], p = playing ? B.playerHero(state) : null;
+      if (p && p.dead > 0 && this.deathMark) fx.push({ x: this.deathMark.x, y: this.deathMark.y, r: 1.4, kind: 7, team: 1 });
       for (const e of state.effects) {
         if (e.kind === 'trap' && e.team !== 0) continue;
         const kind = { trap: 1, storm: 2, frost: 3, meteor: 4 }[e.kind];
@@ -883,7 +888,8 @@
       let centre;
       if (playing) {
         const p = B.playerHero(state);
-        centre = p.dead > 0 ? B.BASES[0] : p;
+        // While dead the view stays where you fell, marked, so you can see what happened.
+        centre = p.dead > 0 ? this.deathMark || B.BASES[0] : p;
       } else {
         const t = this.reducedMotion ? 0 : this.time * 0.03;
         centre = { x: B.WIDTH / 2 + Math.sin(t) * 30, y: B.HEIGHT / 2 + Math.sin(t * 1.7) * 14 };

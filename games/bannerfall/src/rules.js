@@ -74,7 +74,7 @@
     staff: { name: 'Ash Staff', cost: 600, power: 0.3, text: 'Abilities hit 30% harder' },
     mail: { name: 'Chain Mail', cost: 650, hp: 300, armour: 0.12, text: '+300 health, take 12% less damage' },
     standard: { name: 'War Standard', cost: 900, damage: 25, hp: 220, text: '+25 damage, +220 health' },
-    potion: { name: 'Healing Potion', cost: 60, heal: 260, text: 'Heal 260 over eight seconds' }
+    potion: { name: 'Healing Potion', cost: 60, heal: 260, text: 'Drink at once: heal 260 over eight seconds. Takes no slot.' }
   };
   const SLOTS = 6;
   const BUILDS = {
@@ -96,7 +96,7 @@
     ranged: { hp: 140, damage: 18, range: 4.5, rate: 0.7, speed: 3.6, gold: 16, xp: 16, r: 0.45 },
     siege: { hp: 520, damage: 40, range: 6, rate: 0.45, speed: 3.2, gold: 45, xp: 40, r: 0.6 }
   };
-  const WAVE_FIRST = 10, WAVE_EVERY = 25, COLOSSUS_AT = 360, COLOSSUS_RESPAWN = 180, CAMP_RESPAWN = 60, RECALL_TIME = 4;
+  const WAVE_FIRST = 10, WAVE_EVERY = 25, COLOSSUS_AT = 360, COLOSSUS_RESPAWN = 240, CAMP_RESPAWN = 60, RECALL_TIME = 4;
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -355,7 +355,7 @@
     if (h.hp > 0) h.hp = Math.min(h.maxHp, h.hp + Math.max(0, h.maxHp - before));
     h.mana = Math.min(h.maxMana, (h.mana || 0) + Math.max(0, h.maxMana - manaBefore));
   }
-  const xpNeed = level => 120 + 70 * level;
+  const xpNeed = level => 100 + 55 * level;
 
   function attachGetters(state) {
     Object.defineProperties(state, {
@@ -390,10 +390,10 @@
     for (let team = 0; team < 2; team++) {
       for (let lane = 0; lane < 3; lane++) for (const [order, along] of TOWER_ALONG.entries()) {
         const p = lanePoint(lane, team === 0 ? along : LANE_LENGTHS[lane] - along);
-        state.units.push(makeUnit(state, 'tower', team, p.x, p.y, { lane, order, r: 1, hp: order ? 3600 : 3000, maxHp: order ? 3600 : 3000, range: 7, sight: 10, rate: 0.85, streak: 0 }));
+        state.units.push(makeUnit(state, 'tower', team, p.x, p.y, { lane, order, r: 1, hp: order ? 4000 : 3000, maxHp: order ? 4000 : 3000, range: 7, sight: 10, rate: 0.85, streak: 0 }));
       }
       const b = BASES[team];
-      state.units.push(makeUnit(state, 'banner', team, b.x, b.y, { r: 1.4, hp: 5000, maxHp: 5000, range: 7, sight: 12, rate: 0.75, streak: 0 }));
+      state.units.push(makeUnit(state, 'banner', team, b.x, b.y, { r: 1.4, hp: 9000, maxHp: 9000, range: 7, sight: 12, rate: 0.75, streak: 0 }));
     }
     for (const [i] of CAMPS.entries()) spawnCamp(state, i);
     return attachGetters(state);
@@ -488,7 +488,7 @@
   function emit(state, events, event) {
     events.push(event);
     if (event.log) {
-      state.log.push({ text: event.log, team: event.team ?? -1, time: state.time });
+      state.log.push({ text: event.log, team: event.logTeam ?? event.team ?? -1, time: state.time });
       if (state.log.length > 8) state.log.shift();
     }
   }
@@ -574,7 +574,7 @@
       shareXp(state, target, foeTeam, 100 + 25 * target.level, events);
       const name = HEROES[target.kind].name;
       emit(state, events, { type: 'heroKill', victim: target.id, killer: credited?.id ?? 0, team: foeTeam, x: target.x, y: target.y,
-        log: credited ? `${HEROES[credited.kind].name} (${TEAM_NAMES[credited.team]}) took down ${name}.` : `${name} (${TEAM_NAMES[target.team]}) fell.` });
+        log: credited ? `${HEROES[credited.kind].name} (${TEAM_NAMES[credited.team]}) took down ${name} (${TEAM_NAMES[target.team]}).` : `${name} (${TEAM_NAMES[target.team]}) fell.` });
     } else if (target.type === 'minion') {
       const spec = MINIONS[target.kind];
       if (killer) { giveGold(state, killer, spec.gold); killer.cs++; if (killer.player) emit(state, events, { type: 'gold', amount: spec.gold, x: target.x, y: target.y }); }
@@ -585,7 +585,7 @@
       for (const h of heroes(state, foeTeam)) giveGold(state, h, 150);
       if (killer) giveGold(state, killer, 100);
       shareXp(state, target, foeTeam, 120, events);
-      emit(state, events, { type: 'towerDown', id: target.id, team: target.team, lane: target.lane, x: target.x, y: target.y,
+      emit(state, events, { type: 'towerDown', id: target.id, team: target.team, logTeam: foeTeam, lane: target.lane, x: target.x, y: target.y,
         log: `${TEAM_NAMES[foeTeam]} destroyed the ${TEAM_NAMES[target.team].toLowerCase()} ${target.order ? 'inner' : 'outer'} ${LANE_NAMES[target.lane]} tower.` });
     } else if (target.type === 'banner') {
       state.status = target.team === 0 ? 'lost' : 'won';
@@ -624,8 +624,8 @@
     } else u.cd = 1 / u.rate;
     if (u.type === 'minion' && u.kind === 'siege' && structure(target)) damage *= 1.8;
     // Structures shrug off early pushes; late waves hit them harder and harder.
-    if (u.type === 'minion' && structure(target)) damage *= 0.8 + minute(state) * 0.09 + (state.buff[u.team] > 0 ? 0.35 : 0);
-    if (u.type === 'hero' && structure(target)) damage *= 0.7 + Math.min(0.8, minute(state) * 0.05);
+    if (u.type === 'minion' && structure(target)) damage *= 0.6 + minute(state) * 0.07 + (state.buff[u.team] > 0 ? 0.3 : 0);
+    if (u.type === 'hero' && structure(target)) damage *= 0.55 + Math.min(0.7, minute(state) * 0.04);
     u.facing = target.x < u.x ? -1 : 1;
     u.anim = 0.2;
     if (u.range >= 3) {
@@ -968,6 +968,10 @@
   function stepStructure(state, s, events) {
     tickStatus(state, s, events);
     if (!alive(s)) return;
+    // A banner left alone mends itself, so it falls to a siege rather than one lucky push.
+    if (s.type === 'banner' && s.hp < s.maxHp && state.tick % 30 === 0 && !state.units.some(u => u.team !== s.team && u.team !== 2 && alive(u) && !(u.type === 'hero' && u.dead > 0) && dist(u, s) < 12)) {
+      s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.01);
+    }
     let target = s.target ? unitById(state, s.target) : null;
     const valid = u => u && targetable(state, u, s.team) && inReach(s, u) && u.type !== 'beast' && u.type !== 'colossus';
     const call = state.calls[s.team], caller = call && call.until > state.time ? unitById(state, call.id) : null;
@@ -1299,8 +1303,9 @@
     const ally = state.units.find(u => u.type === 'hero' && u.team === 0 && !u.player && alive(u));
     if (!ally) return;
     const colossus = state.units.find(u => u.type === 'colossus' && alive(u));
-    if (colossus && state.time - (state.lastColossusPing || 0) > 45) {
-      state.lastColossusPing = state.time;
+    // Called out once each time it rises.
+    if (colossus && !colossus.pinged) {
+      colossus.pinged = true;
       emit(state, events, { type: 'ping', team: 0, x: colossus.x, y: colossus.y, log: `${HEROES[ally.kind].name}: Colossus up in the river!` });
       return;
     }

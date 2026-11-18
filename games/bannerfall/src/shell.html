@@ -52,7 +52,7 @@ dl.keys dd{margin:0;color:#d6d0bc}
 #xp-bar{display:block;height:100%;background:var(--gold)}
 @keyframes pulse{to{opacity:.45}}
 #score{color:#d8d2be;font-size:11px}
-#items{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#items{color:var(--muted);font-size:10px;line-height:1.3}
 .tools{display:flex;gap:4px;margin-top:2px;flex-wrap:nowrap}
 .tools button{flex:1;padding:4px 4px;min-width:44px;min-height:44px;font:11px "Courier New",monospace}
 #objective{position:absolute;left:calc(268px + var(--safe-l));right:calc(128px + var(--safe-r));top:calc(10px + var(--safe-t));background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);padding:6px 10px;text-align:center;font:13px Georgia,serif;color:#f2ead2;box-sizing:border-box}
@@ -63,11 +63,13 @@ dl.keys dd{margin:0;color:#d6d0bc}
 #log div.blue{border-color:var(--blue);color:#b8d8ff}
 #log div.red{border-color:var(--red);color:#ffc0b8}
 #hotbar{position:absolute;left:50%;bottom:calc(12px + var(--safe-b));transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto;box-sizing:border-box}
-.ability{position:relative;width:68px;min-height:54px;padding:4px 4px;background:#141c26eb;border:1px solid var(--line);display:grid;gap:1px;align-content:center;text-align:center;font:11px "Courier New",monospace;touch-action:none}
+.ability{position:relative;width:94px;min-height:54px;padding:4px 4px;background:#141c26eb;border:1px solid var(--line);display:grid;gap:1px;align-content:center;text-align:center;font:11px "Courier New",monospace;touch-action:none}
 .ability i{font:bold 11px "Courier New",monospace;color:var(--gold);font-style:normal}
-.ability b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ability b{font-size:10px;line-height:1.15;white-space:normal}
 .ability small{font-size:9px;color:var(--muted)}
-.ability .cool{position:absolute;inset:0;display:grid;place-items:center;background:#080b10cc;color:var(--gold);font:bold 15px "Courier New",monospace;pointer-events:none}
+.ability .cool{position:absolute;top:2px;right:4px;color:var(--gold);font:bold 13px "Courier New",monospace;pointer-events:none}
+.ability.cooling{background:#0b1016f0}
+.ability.cooling i,.ability.cooling b,.ability.cooling small{opacity:.42}
 .ability .cool:empty{display:none}
 .ability.ready{border-color:#7892b0}
 .ability.locked{opacity:.48}
@@ -80,6 +82,7 @@ dl.keys dd{margin:0;color:#d6d0bc}
 .item em{font:bold 13px "Courier New",monospace;color:var(--gold);font-style:normal}
 .item small{grid-column:1/-1;font:11px "Courier New",monospace;color:var(--muted)}
 .item.ready{border-color:var(--gold);background:#243028}
+#shop,#board{z-index:5;box-shadow:0 0 0 100vmax #000a,0 18px 60px #000c}
 table.board{width:100%;border-collapse:collapse;font:12px "Courier New",monospace;margin:10px 0}
 table.board th,table.board td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
 table.board tr.blue td:first-child{color:var(--blue)}

@@ -17,9 +17,9 @@
     warden: [['_^_', '[W]', '/ \\'], ['mmm', 'twt', 'T T']],
     wardenB: [['_^_', '[W]', '| |'], ['mmm', 'twt', 'T T']],
     wardenA: [['_^_', '[W>', '/ \\'], ['mmm', 'twm', 'T T']],
-    ranger: [[' A ', '(R-', '/ \\'], [' G ', 'bwm', 'T T']],
-    rangerB: [[' A ', '(R-', '| |'], [' G ', 'bwm', 'T T']],
-    rangerA: [[' A ', '(R>', '/ \\'], [' G ', 'bwy', 'T T']],
+    ranger: [[' A ', '(R-', '/ \\'], [' t ', 'twm', 'T T']],
+    rangerB: [[' A ', '(R-', '| |'], [' t ', 'twm', 'T T']],
+    rangerA: [[' A ', '(R>', '/ \\'], [' t ', 'twy', 'T T']],
     ember: [[' * ', '{E}', '/ \\'], [' o ', 'twt', 'T T']],
     emberB: [[' * ', '{E}', '| |'], [' o ', 'twt', 'T T']],
     emberA: [['\\*/', '{E}', '/ \\'], ['oyo', 'twt', 'T T']],
@@ -223,10 +223,12 @@
     // Top-left world cell of the view for a camera centred on (x, y) in tiles.
     camera(x, y) {
       const cx = Math.round(x * TILE_W - this.columns / 2), cy = Math.round(y * TILE_H - this.rows / 2);
+      // The view may run a little past the map edge so a base is never jammed under the HUD.
+      const padX = Math.round(this.columns * 0.18), padY = Math.round(this.rows * 0.22);
       const maxX = BF.WIDTH * TILE_W - this.columns, maxY = BF.HEIGHT * TILE_H - this.rows;
       return {
-        x: maxX < 0 ? Math.round(maxX / 2) : Math.max(0, Math.min(maxX, cx)),
-        y: maxY < 0 ? Math.round(maxY / 2) : Math.max(0, Math.min(maxY, cy))
+        x: maxX < 0 ? Math.round(maxX / 2) : Math.max(-padX, Math.min(maxX + padX, cx)),
+        y: maxY < 0 ? Math.round(maxY / 2) : Math.max(-padY, Math.min(maxY + padY, cy))
       };
     }
     // tiles: the map; sight: 2 seen now, 1 seen before, 0 never; walls: tile index -> team + 1.
