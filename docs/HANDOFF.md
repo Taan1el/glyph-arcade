@@ -1,5 +1,17 @@
 # Handoff Log
 
+## Playtest fixes - 2026-11-18
+Branch: `fix/playtest-round` (from `feature/irongrid`)
+Status: fixes for the Bannerfall, Ricochet and Lockwork notes above
+What changed:
+- Lockwork: 30 new vaults from a route-first generator, each checked by `solveVault` to start locked, need at least two mechanism moves, solve within 30000 states from the start (hints) and within 60000 in the `brass-seed` variant. The old set had five vaults solved at step 0. Vault picker clicks now work (it was dropping the choice because `act()` ran before leaving the picker). Tests no longer depend on old vault coordinates.
+- Bannerfall: pacing (xp 100+55L, slower structure damage early, 9000-health banner that mends 1%/0.5s when unthreatened, Colossus every 4 minutes): 20 AI matches average 13.3 minutes, hero win rates 47 to 54 percent. All listed HUD, feed and grammar notes fixed.
+- Ricochet: the 3 s hold limit was fumbling charges started late; it now applies only while not charging. Overcharge warns at 1.0 s and fumbles at 1.6 s.
+- Burrow smoke test was a timing flake under load; it now waits for the dirt.
+Not verified:
+- No person has played these changes. Lockwork's new vaults are proven solvable and non-trivial, but not proven fun.
+- Irongrid was only screenshotted at its start; its listed notes were none.
+
 ## Irongrid - 2026-11-18
 Branch: `feature/irongrid`  Last commit: `ce73e7b`
 Status: feature-complete

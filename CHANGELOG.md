@@ -22,7 +22,14 @@ All notable changes to Glyph Arcade are documented in this file.
   - Keyboard and mouse, touch, and gamepad controls, three difficulties, and an automatic world save.
 
 ### Changed
-- **Tooling**: `tools/layout-check.cjs` also covers objective bars and hotbars.
+- **Lockwork**: All 30 vaults are new. They come from a generator that builds a real beam route and then breaks it, and each one is kept only if the game's own solver proves it starts locked and needs several mechanism moves. Five old vaults were solved before the first step. Par is the solver's best plus two.
+- **Lockwork**: The vault picker switches vaults again, a held key no longer spills into the next vault, Esc leaves the help screen, hints search deeper and say they are working, and the board sizes itself to the space the HUD leaves free.
+- **Bannerfall**: Matches run about 13 to 18 minutes instead of 10. Levels come faster, so level 6 arrives around minute 5, and structures take a real siege: the banner has more health and mends when left alone.
+- **Bannerfall**: Wider ability cards with corner cooldowns, wrapped item lists, the shop and scoreboard dim the battle, `Tab` toggles the scoreboard, kill lines name both teams, the log uses the acting team's colour, the Colossus is called out once per rise, and the view stays on the spot where you fell.
+- **Ricochet**: A charge warns at full power and fumbles only after 1.6 seconds, the hold limit no longer fumbles a charge in progress, keyboard aim is a moderate angle, and Normal rivals react a little slower.
+- **Joyride**: The player's car always burns before it explodes, a destroyed car no longer drags the respawn back to the wreck, traffic stops in time for people on foot, and a stalled car gets two seconds, with a warning, before police bust it.
+- **Engine**: Same-size texture uploads refill the texture instead of reallocating it every frame.
+- **Tooling**: `tools/layout-check.cjs` also covers objective bars and hotbars, and the Burrow smoke test waits for the dig instead of a fixed delay.
 
 ## [0.4.0] - 2026-11-02
 
