@@ -18,7 +18,7 @@ const GAMES=[
   {id:'ricochet',title:'Ricochet',tagline:'Catch the glowing disc, curve spin shots and shatter your rival\'s shields in four neon courts.',
    parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','engine/glyph-sprites.js','games/ricochet/src/art.js','games/ricochet/src/rules.js','games/ricochet/src/scene.js','games/ricochet/src/app.js'],shell:'games/ricochet/src/shell.html'},
   {id:'lockwork',title:'Lockwork',tagline:'Slide brass conduits, rotate mirrors and time signal pulses across 30 clockwork vaults.',
-   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/lockwork/src/rules.js','games/lockwork/src/scene.js','games/lockwork/src/app.js'],shell:'games/lockwork/src/shell.html'},
+   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','engine/glyph-sprites.js','games/lockwork/src/art.js','games/lockwork/src/rules.js','games/lockwork/src/scene.js','games/lockwork/src/app.js'],shell:'games/lockwork/src/shell.html'},
   {id:'irongrid',title:'Irongrid',tagline:'Command three steam-walkers, shove foes into hazards and defend the power grid across four sectors.',
    parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','engine/glyph-sprites.js','games/irongrid/src/art.js','games/irongrid/src/rules.js','games/irongrid/src/scene.js','games/irongrid/src/app.js'],shell:'games/irongrid/src/shell.html'}
 ];

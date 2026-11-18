@@ -246,8 +246,9 @@
       if (w < 560 && !document.body.classList.contains('touch')) { this.enableTouch(); return; }
       // Size cells so the whole board fits the space the HUD leaves free, and centre it there.
       const cols = L.WIDTH * TILE_W, rows = L.HEIGHT * TILE_H, area = this.boardArea(w, h, cols, rows);
-      const cellH = Math.max(7, Math.min(22, Math.floor(Math.min(area.h / rows, area.w / cols * 1.4))));
-      const cellW = Math.max(5, Math.floor(cellH / 1.4));
+      // Letters as small as still read (4x6), shrinking further only when the board would not fit.
+      const cellH = Math.max(3, Math.min(6, Math.floor(Math.min(area.h / rows, area.w / cols * 1.5))));
+      const cellW = Math.max(2, Math.floor(cellH / 1.5));
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
       this.view.resize(w, h, [cellW, cellH]);
       this.view.offset = {
@@ -265,7 +266,7 @@
       const below = Math.max(stats.bottom, goal.bottom) + 6;
       const side = { x: stats.right + 8, y: goal.bottom + 6, w: w - stats.right - 16, h: bottom - goal.bottom - 6 };
       const top = { x: 8, y: below, w: w - 16, h: bottom - below };
-      const fit = a => Math.min(a.h / rows, a.w / cols * 1.4);
+      const fit = a => Math.min(a.h / rows, a.w / cols * 1.5);
       return fit(side) >= fit(top) ? side : top;
     }
 
