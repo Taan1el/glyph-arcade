@@ -301,7 +301,8 @@
       let ch = Math.max(6, Math.floor(availH / (R.BOARD_SIZE * TILE_H + 1)));
       ch = Math.min(ch, Math.round(cw * 1.8));
       cw = Math.min(cw, Math.max(4, Math.round(ch * 0.72)));
-      const cell = this.quality.cell([cw, ch]);
+      // Keep the entire 8x8 fixed board inside the viewport even when GlyphQuality lowers DPR
+      const cell = [cw, ch];
       const shiftCells = Math.round((topBand - botBand) / cell[1]);
 
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
