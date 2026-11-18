@@ -80,10 +80,12 @@
         if(corner){fg=vec3(1.0,.52,.32);glyph=l.x<2?123u:125u;}
       }
       if((ov&4u)!=0u){
-        float p=.72+.28*sin(u_time*6.0+float(t.x));
-        bg=mix(bg,vec3(.38,.16,.04),.62);
-        float crack=abs(uv.y-.55-.15*sin(uv.x*14.0));
-        if(crack<.1){fg=vec3(1.0,.58,.20)*p;glyph=37u;}
+        float p=.75+.25*sin(u_time*6.0+float(t.x));
+        bg=mix(bg,vec3(.52,.18,.04),.72);
+        float crack=abs(uv.y-.52-.16*sin(uv.x*13.0));
+        bool edgeRim=l.x==0||l.x==TW-1||l.y==TH-1;
+        if(crack<.15){fg=vec3(1.0,.68,.20)*p;bg=vec3(.55,.20,.04);glyph=37u;}
+        else if(edgeRim){fg=vec3(.96,.48,.16)*p;glyph=42u;}
       }
       if((ov&16u)!=0u&&ter!=2u&&ter!=6u&&l.y==TH-3&&abs(l.x-TW/2)<=1){
         fg=l.x==TW/2?vec3(1.0,.32,.26):vec3(1.0,.82,.28);
@@ -101,15 +103,9 @@
       // Enemy telegraphs: the struck square, and arrows on the attacker's facing edge.
       if((thr&1u)!=0u){
         float p=.65+.35*sin(u_time*7.0);
-        bg=mix(bg,vec3(.46,.08,.08),.42*p);
-        if(l.y==1&&abs(l.x-TW/2)<=1){fg=vec3(1.0,.30,.24);glyph=l.x<TW/2?40u:(l.x>TW/2?41u:88u);}
-      }
-      if((thr&30u)!=0u){
-        vec3 acol=vec3(1.0,.28,.22);
-        if((thr&2u)!=0u&&l.x==TW-1&&midRows){fg=acol;glyph=62u;}
-        if((thr&4u)!=0u&&l.x==0&&midRows){fg=acol;glyph=60u;}
-        if((thr&8u)!=0u&&l.y==TH-1&&abs(l.x-TW/2)<=1){fg=acol;glyph=86u;}
-        if((thr&16u)!=0u&&l.y==0&&abs(l.x-TW/2)<=1){fg=acol;glyph=94u;}
+        bg=mix(bg,vec3(.52,.09,.09),.48*p);
+        if(l.y==1&&abs(l.x-TW/2)<=1){fg=vec3(1.0,.32,.24);glyph=l.x<TW/2?40u:(l.x>TW/2?41u:88u);}
+        if(corner){fg=vec3(1.0,.34,.26)*p;glyph=l.x<2?91u:93u;}
       }
       if((thr&32u)!=0u){
         bg=mix(bg,vec3(.48,.22,.56),.55);
@@ -123,6 +119,19 @@
 
     // Rigs, insects, relays and the train; health bars sit on the row above each.
     spriteCell(cell,vec3(1.0),glyph,fg,bg);
+
+    // Bold crimson directional attack chevrons on outer edge cells so telegraphs stay legible.
+    if(onBoard&&(thr&30u)!=0u){
+      vec3 acol=vec3(1.0,.32,.24);
+      bool showE=(thr&2u)!=0u&&l.x>=TW-2&&midRows;
+      bool showW=(thr&4u)!=0u&&l.x<=1&&midRows;
+      bool showS=(thr&8u)!=0u&&l.y>=TH-2&&abs(l.x-TW/2)<=2;
+      bool showN=(thr&16u)!=0u&&l.y<=1&&abs(l.x-TW/2)<=2;
+      if(showE||showW||showS||showN){
+        fg=acol;bg=mix(bg,vec3(.45,.06,.06),.7);
+        glyph=showE?62u:(showW?60u:(showS?86u:94u));
+      }
+    }
 
     // Shields and webs wrap whatever stands in the square, so they draw last.
     if(onBoard&&(ov&64u)!=0u&&edgeV&&l.y>0&&l.y<TH-1){glyph=l.x==0?40u:41u;fg=vec3(.76,.52,1.0);bg=mix(bg,vec3(.24,.12,.38),.6);}
