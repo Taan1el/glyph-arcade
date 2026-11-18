@@ -1,5 +1,29 @@
 # Handoff Log
 
+## Irongrid - 2026-11-18
+Branch: `feature/irongrid`  Last commit: `ce73e7b`
+Status: feature-complete
+What works:
+- Pure rules in `games/irongrid/src/rules.js`: 8×8 tactical island grid across 4 sectors (`Rust Flats` supply train, `Flooded Quarry` collapsing dam tiles, `Storm Ridge` lightning strikes, `The Hive Core` Brood Queen 2-tile wide boss), 3 steam-walker rigs (`Titan [T]` 4HP/3Move, `Howitzer [A]` 3HP/3Move, `Aegis [S]` 3HP/4Move Flying), 12 Command Cards (start with 6, draft 1 after each battle, 4-card hand, 3 Reactor Energy/turn), 6 enemy types (`Pincer`, `Spitter`, `Beetle`, `Webber`, `Hornet`, `Brood Queen` + `Hive Egg`), relative directional telegraphs, +1 wall/unit collision knockback, instant water/chasm drowning for ground units, Smoke attack cancellation, spawn fissure blocking for 1 self-damage, `previewAction()`, 3 difficulties (`Easy`, `Normal`, `Hard`), and `save`/`restore`.
+- Scene shader and ASCII frames in `games/irongrid/src/scene.js`: 6×4 cells per board square (48×32 cells), 12 compiled frames (6×4 units/relays/train + 12×4 Brood Queen) using allowed uppercase/digit/symbol glyphs only, live per-unit HP pip strip, violet shield brackets, webbings, orange fissures `%`, proximity mines `[*]`, smoke `:::`, danger highlights `(X)`, and directional threat/push preview arrows (`^ V < >`).
+- App and shell in `games/irongrid/src/app.js` and `games/irongrid/src/shell.html`: keyboard (`WASD`/Arrows cursor, `Space`/`Enter` confirm, `1-4` cards/rewards, `Tab`/`Q` cycle rigs, `Z`/`Backspace` undo, `E` end turn, `P`/`Esc` pause), mouse hover preview + click, touch tap-to-preview-before-confirm card flow, bottom 4-card `#hotbar` + `Rig`/`Undo`/`End Turn` buttons, `GlyphPad` gamepad polling, `GlyphQuality` DPR scaling (with fixed 8×8 cell bounds), synthesised WebAudio SFX, reduced motion, and `localStorage` persistence.
+- Wired into `tools/build.cjs`, `package.json`, `tests/browser-smoke.cjs`, `tools/layout-check.cjs`, `tools/capture-previews.cjs`, `README.md`, and `CHANGELOG.md`.
+Known bugs and rough edges (for Claude):
+- **Mid-playtest host disconnect (`webview_browser`)**: Initial interactive browser playtester completed Steps 2–28 (Sector 1 Turn 1, Title/Help, `Tab` rig cycling, move/undo) before `webview_browser` host disconnected cleanly on script mode; two follow-up fixes landed afterward (`d90f1de` hiding `#hud` on `#help` / modal screens, `ce73e7b` keeping 8×8 `cellSize` fixed under `GlyphQuality` DPR scaling) and were verified via headless Playwright (`irongrid-e2e.cjs` and `irongrid-reward-check.cjs`).
+- **Existing-game check (`burrow` in `tests/browser-smoke.cjs`)**: Same pre-existing failure at `tests/browser-smoke.cjs:172` (`Burrow did not dig under the held mouse`) blocks running `npm run test:browser` end-to-end.
+Not verified:
+- Interactive manual playthrough of Sectors 3 (`Storm Ridge`) and 4 (`The Hive Core` / Brood Queen finale) in a live visible browser tab (verified through Sector 2 in Chromium E2E and across all 4 sectors on `4/4` seeds by the headless tactical bot).
+- Full `tests/browser-smoke.cjs` single-pass run (blocked at Burrow line 172; Irongrid's own desktop/mobile smoke and E2E scripts passed independently).
+- Physical gamepad controller hardware test.
+Commands run and results:
+- `npm test` -> exit `0` across all 9 games (MIT license pass, Delve `12/12`, Inkfire `10/10`, Wordfall `12/12`, Burrow `20/20`, Joyride `11/11`, Bannerfall `13/13`, Ricochet `8/8`, Lockwork `5/5`, Irongrid `8/8` in `16.16s` with Normal bot `4/4` wins: `s1:win(sec=4,pwr=6,k=22,score=7040) | s2:win(sec=4,pwr=6,k=25,score=7265) | s3:win(sec=4,pwr=6,k=22,score=6690) | s4:win(sec=4,pwr=6,k=27,score=7415)`).
+- `npm run build` -> built all 9 `dist/*.html` (`dist/irongrid.html` `146452` bytes) and `dist/index.html`.
+- `node tools/layout-check.cjs` -> `PASS Touch HUD has no overlaps and every tap target is at least 44px` across all 9 games (`360×640`, `844×390`, `1280×720`).
+- `npm run previews` -> wrote all 9 previews including `dist/previews/irongrid.png` and rebuilt `dist/index.html`.
+- `irongrid-smoke.cjs` -> `PASS Irongrid desktop & mobile smoke {"desktop":{"mode":"play","moved":true,"turn":2,"cells":27,"energy":3},"mobile":{"touch":true,"cells":29},"playedCard":{"played":"mortar_shell","energy":2}}`, 0 errors.
+- `irongrid-e2e.cjs` -> passed Help HUD hiding + `Esc`, `Rig (Tab)` and `Undo (Z)` clicks, and all 8 column hovers `0..7` at `1280×800`, 0 errors.
+- `irongrid-reward-check.cjs` -> `PASS Irongrid full Sector 1->Reward->Sector 2 + mobile play mode {"rew":{"mode":"reward","sector":0,"power":6,"options":["mine_layer","rail_spike","repair_nanites"]},"sec2":{"mode":"play","sector":2,"sectorName":"Flooded Quarry","deckLen":7,"power":6,"cells":26},"mobileBox":{"statsBottom":98,"objTop":103,"objBottom":156,"hotTop":732,"hotBottom":836,"overflowX":false,"cells":26}}`, 0 errors.
+
 ## Lockwork - 2026-11-17
 Branch: `feature/lockwork`  Last commit: `4162995`
 Status: feature-complete
