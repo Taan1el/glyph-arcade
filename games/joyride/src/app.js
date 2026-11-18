@@ -2,7 +2,7 @@
 (function (global) {
   'use strict';
 
-  const J = global.Joyride, { TILE_W, TILE_H, headingDir } = global.JoyrideView;
+  const J = global.Joyride, { TILE_W, TILE_H } = global.JoyrideView;
   const SAVE_KEY = 'joyride-save', BEST_KEY = 'joyride-best';
   const STEP_MS = J.STEP * 1000;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -273,9 +273,8 @@
     }
 
     resize() {
-      const narrow = global.innerWidth < 700;
-      const base = narrow ? [7, 10] : [8, 12];
-      const cell = this.quality.cell(base);
+      // The smallest letters that still read as letters on a high-density screen.
+      const cell = this.quality.cell([4, 6]);
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
       this.view.resize(global.innerWidth, global.innerHeight, cell);
       this.syncStatsBottom();
@@ -699,52 +698,47 @@
     }
 
     collectSprites(state, cam) {
-      const sprites = [];
+      const sprites = [], view = this.view, heading = global.JoyrideArt.heading;
       const toCell = (x, y) => ({ x: Math.round(x * TILE_W) - cam.x, y: Math.round(y * TILE_H) - cam.y });
-      const onScreen = (at, w, h) => at.x + w >= 0 && at.y + h >= 0 && at.x < this.view.columns && at.y < this.view.rows;
-      const addFrame = (x, y, frameName, flash = false, lit = false) => {
-        const f = this.view.art.index[frameName];
-        if (!f) return;
-        const at = toCell(x - f.w / (2 * TILE_W), y - f.h / (2 * TILE_H));
-        if (onScreen(at, f.w, f.h)) sprites.push({ x: at.x, y: at.y, frame: frameName, flash, lit });
+      const onScreen = (at, w, h) => at.x + w >= 0 && at.y + h >= 0 && at.x < view.columns && at.y < view.rows;
+      // Art centres on its world position.
+      const addArt = (x, y, art, extra = {}) => {
+        const { w, h } = view.size(art);
+        const at = { x: Math.round(x * TILE_W - w / 2) - cam.x, y: Math.round(y * TILE_H - h / 2) - cam.y };
+        if (onScreen(at, w, h)) sprites.push({ x: at.x, y: at.y, art, ...extra });
       };
 
       // Particles and smoke/fire on damaged cars first (drawn on top)
       for (const part of this.particles) {
         const at = toCell(part.x, part.y);
-        if (onScreen(at, 1, 1)) sprites.push({ x: at.x, y: at.y, char: part.char, colour: part.colour, lit: true });
+        if (onScreen(at, 1, 1)) sprites.push({ x: at.x, y: at.y, char: part.char, colour: part.colour });
       }
 
       // Active job marker / parcels / checkpoints + off-screen directional edge arrow
       const job = state.activeJob;
       const navTarget = job ? J.objectiveTarget(state) : (state.taxiFare || J.objectiveTarget(state));
       if (job && job.type === 'pickup') {
-        for (const p of job.parcels) if (!p.taken) addFrame(p.x, p.y, 'parcel', false, true);
+        for (const p of job.parcels) if (!p.taken) addArt(p.x, p.y, 'parcel', { lit: true });
       }
       if (navTarget && this.mode !== 'title') {
+        const bob = Math.sin(this.time * 5) * 0.15;
         const mAt = toCell(navTarget.x, navTarget.y - 1.5);
-        if (onScreen(mAt, 3, 2)) {
-          addFrame(navTarget.x, navTarget.y - 1.5, 'marker', false, true);
+        if (onScreen(mAt, 5, 4)) {
+          addArt(navTarget.x, navTarget.y - 1.4 + bob, 'marker', { lit: true });
         } else {
           const pos = J.playerPos(state);
           const angle = Math.atan2(navTarget.y - pos.y, navTarget.x - pos.x);
-          const dir = headingDir(angle);
-          const f = this.view.art.index[`arrow.${dir}`];
-          if (f) {
-            const cx = this.view.columns / 2, cy = this.view.rows / 2;
-            const padX = Math.max(4, Math.floor(this.view.columns * 0.1));
-            const minY = 9, maxY = Math.max(minY + 4, this.view.rows - (document.body.classList.contains('touch') ? 16 : 5));
-            const halfW = Math.max(6, cx - padX), halfH = Math.max(4, (maxY - minY) / 2);
-            const midY = (minY + maxY) / 2;
-            const cos = Math.cos(angle), sin = Math.sin(angle);
-            const scale = Math.min(
-              Math.abs(cos) > 0.01 ? halfW / Math.abs(cos) : 999,
-              Math.abs(sin) > 0.01 ? halfH / Math.abs(sin) : 999
-            );
-            const ax = clamp(Math.round(cx + cos * scale - f.w / 2), 2, this.view.columns - f.w - 2);
-            const ay = clamp(Math.round(midY + sin * scale - f.h / 2), minY, maxY - f.h);
-            sprites.push({ x: ax, y: ay, frame: `arrow.${dir}`, flash: false, lit: true });
-          }
+          const art = `arrow.${heading(angle)}`, { w, h } = view.size(art);
+          const cx = view.columns / 2, cy = view.rows / 2;
+          const padX = Math.max(8, Math.floor(view.columns * 0.1));
+          const minY = 18, maxY = Math.max(minY + 8, view.rows - (document.body.classList.contains('touch') ? 32 : 10));
+          const halfW = Math.max(12, cx - padX), halfH = Math.max(8, (maxY - minY) / 2);
+          const midY = (minY + maxY) / 2;
+          const cos = Math.cos(angle), sin = Math.sin(angle);
+          const scale = Math.min(Math.abs(cos) > 0.01 ? halfW / Math.abs(cos) : 999, Math.abs(sin) > 0.01 ? halfH / Math.abs(sin) : 999);
+          const ax = clamp(Math.round(cx + cos * scale - w / 2), 2, view.columns - w - 2);
+          const ay = clamp(Math.round(midY + sin * scale - h / 2), minY, maxY - h);
+          sprites.push({ x: ax, y: ay, art, lit: true });
         }
       }
 
@@ -752,15 +746,15 @@
       for (const pkg of state.packages) {
         if (!pkg.collected) {
           const at = toCell(pkg.x, pkg.y);
-          if (onScreen(at, 1, 1)) sprites.push({ x: at.x, y: at.y, char: '?', colour: [110, 235, 255], lit: true });
+          if (onScreen(at, 1, 1)) sprites.push({ x: at.x, y: at.y, char: '?', colour: [110, 235, 255] });
         }
       }
 
       // Spike strips
       for (const sp of state.spikes) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const at = toCell(sp.x + dx * 0.4, sp.y);
-          if (onScreen(at, 1, 1)) sprites.push({ x: at.x, y: at.y, char: '^', colour: [255, 90, 90], lit: true });
+        for (let dx = -2; dx <= 2; dx++) {
+          const at = toCell(sp.x + dx * 0.2, sp.y);
+          if (onScreen(at, 1, 1)) sprites.push({ x: at.x, y: at.y, char: '^', colour: [255, 90, 90] });
         }
       }
 
@@ -768,46 +762,28 @@
       if (!state.player.carId && this.mode !== 'title') {
         const p = state.player, moving = Math.hypot(p.vx, p.vy) > 0.6;
         const step = Math.floor(p.anim * 2) % 2;
-        addFrame(p.x, p.y, moving && step ? 'playerWalk' : 'playerIdle', p.hurtTimer > 0.2, true);
+        addArt(p.x, p.y, moving && step ? 'playerWalk' : 'player', { flash: p.hurtTimer > 0.2, lit: true });
       }
 
-      // Cars (8 headings, plus police roof light bars and night headlights)
+      // Cars at 16 headings; police light bars flash by swapping frames.
       const night = J.isNight(state);
       for (const car of state.cars) {
-        const dir = headingDir(car.angle);
-        const kind = car.wrecked ? 'wreck' : car.kind;
-        if (!car.wrecked && car.driver === 'police') {
-          const at = toCell(car.x, car.y);
-          if (onScreen(at, 1, 1)) {
-            const red = Math.floor(this.time * 10 + car.id) % 2 === 0;
-            sprites.push({ x: at.x, y: at.y, char: '*', colour: red ? [255, 60, 60] : [70, 145, 255], lit: true });
-          }
-        }
-        if (night && !car.wrecked && car.occupied) {
-          const hx = car.x + Math.cos(car.angle) * 1.15, hy = car.y + Math.sin(car.angle) * 1.15;
-          const hAt = toCell(hx, hy);
-          if (onScreen(hAt, 1, 1)) {
-            sprites.push({ x: hAt.x, y: hAt.y, char: '*', colour: [255, 240, 175], lit: true });
-          }
-        }
+        const police = !car.wrecked && car.driver === 'police' && Math.floor(this.time * 8 + car.id) % 2 === 0;
+        const kind = car.wrecked ? 'wreck' : police ? car.kind + 'B' : car.kind;
+        const art = `${kind}.${heading(car.angle)}`;
         const isLit = car.id === state.player.carId || car.missionImportant || (night && !car.wrecked && car.occupied);
-        addFrame(car.x, car.y, `${kind}.${dir}`, car.flash > 0.1, isLit);
+        addArt(car.x, car.y, view.sprites.sizes.has(art) ? art : `${car.wrecked ? 'wreck' : car.kind}.${heading(car.angle)}`, { flash: car.flash > 0.1, lit: isLit });
       }
 
-      // Pedestrians
+      // Pedestrians, each in their own shirt colour
       const pedRgb = {
         s: [235, 184, 142], c: [82, 180, 232], y: [255, 226, 82],
         p: [198, 104, 232], g: [98, 203, 76], o: [242, 155, 46], w: [244, 242, 232]
       };
       for (const ped of state.peds) {
-        if (ped.downTimer > 0) {
-          addFrame(ped.x, ped.y, 'pedDown', false, false);
-        } else {
-          const at = toCell(ped.x, ped.y);
-          if (onScreen(at, 1, 1)) {
-            sprites.push({ x: at.x, y: at.y, char: 'O', colour: pedRgb[ped.colour] || pedRgb.w, lit: false });
-          }
-        }
+        const tint = pedRgb[ped.colour] || pedRgb.w;
+        if (ped.downTimer > 0) addArt(ped.x, ped.y, 'pedDown', { tint });
+        else addArt(ped.x, ped.y, Math.floor(this.time * 4 + ped.id) % 2 && Math.hypot(ped.vx || 0, ped.vy || 0) > 0.2 ? 'pedWalk' : 'ped', { tint });
       }
 
       return sprites;

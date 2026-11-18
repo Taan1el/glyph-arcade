@@ -12,7 +12,7 @@ const GAMES=[
   {id:'burrow',title:'Burrow',tagline:'Dig, build and light your way down to the thing sleeping under the world.',
    parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','engine/glyph-sprites.js','games/burrow/src/art.js','games/burrow/src/rules.js','games/burrow/src/scene.js','games/burrow/src/app.js'],shell:'games/burrow/src/shell.html'},
   {id:'joyride',title:'Joyride',tagline:'Steal cars, take jobs from payphones and shake off the police in a living town drawn in letters.',
-   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/joyride/src/rules.js','games/joyride/src/scene.js','games/joyride/src/app.js'],shell:'games/joyride/src/shell.html'},
+   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','engine/glyph-sprites.js','games/joyride/src/art.js','games/joyride/src/rules.js','games/joyride/src/scene.js','games/joyride/src/app.js'],shell:'games/joyride/src/shell.html'},
   {id:'bannerfall',title:'Bannerfall',tagline:'Choose a hero, hold three lanes and burn the rival banner.',
    parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','engine/glyph-sprites.js','games/bannerfall/src/art.js','games/bannerfall/src/rules.js','games/bannerfall/src/scene.js','games/bannerfall/src/app.js'],shell:'games/bannerfall/src/shell.html'},
   {id:'ricochet',title:'Ricochet',tagline:'Catch the glowing disc, curve spin shots and shatter your rival\'s shields in four neon courts.',

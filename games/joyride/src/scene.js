@@ -1,289 +1,213 @@
-/* Joyride scene: top-down town view where each world tile is 3x2 character cells.
- * Renders four districts, lane markings, traffic lights, day/night headlights, and 8-heading cars. */
+/* Joyride scene: top-down town where each world tile is 6x4 tiny character cells. Roofs,
+ * pavements, lanes, crossings, parks and water carry real texture; cars are rendered from
+ * their outline at 16 headings; day, night, headlights, sirens and rain light the streets. */
 (function (global) {
   'use strict';
 
-  const TILE_W = 3, TILE_H = 2, MARGIN = 10, MAX_SPRITES = 128;
-
-  // Palette keys for ASCII sprite frames (space = transparent).
-  const PALETTE = {
-    w: '#f4f2e8', k: '#25262e', m: '#9ea6b4', M: '#5f6778',
-    r: '#e84430', o: '#f29b2e', y: '#ffe252', g: '#62cb4c', G: '#3b8e36',
-    c: '#52b4e8', b: '#2f6ce0', B: '#8cc8ff', p: '#c668e8', s: '#ebb88e'
-  };
-
-  function makeCarFrames(emblem, bodyCol, glassCol = 'B', wheelCol = 'k', roofEmblemCol = 'w') {
-    const b = bodyCol, g = glassCol, w = wheelCol, e = roofEmblemCol;
-    return {
-      N:  [['[=]', `|${emblem}|`, '[=]'], [`${w}${g}${w}`, `${b}${e}${b}`, `${w}${b}${w}`]],
-      NE: [[' /^\\', `/${emblem} /`, '\\_/ '], [` ${g}${b}${w}`, `${w}${e}${b}${b}`, `${w}${b}${w} `]],
-      E:  [['[_][=]', `[#${emblem}#>]`, '[_][=]'], [`${w}${b}${b}${b}${g}${w}`, `${b}${b}${e}${b}${g}${b}`, `${w}${b}${b}${b}${g}${w}`]],
-      SE: [[' /~\\', `\\${emblem} \\`, ' \\V/'], [` ${w}${b}${w}`, `${b}${e}${b}${w}`, ` ${w}${b}${g}`]],
-      S:  [['[=]', `|${emblem}|`, '[=]'], [`${w}${b}${w}`, `${b}${e}${b}`, `${w}${g}${w}`]],
-      SW: [['/~\\ ', `/ ${emblem}/`, '\\V/ '], [`${w}${b}${w} `, `${w}${b}${e}${b}`, `${g}${b}${w} `]],
-      W:  [['[=][_]','[<#' + emblem + '#]', '[=][_]'], [`${w}${g}${b}${b}${b}${w}`, `${b}${g}${b}${e}${b}${b}`, `${w}${g}${b}${b}${b}${w}`]],
-      NW: [['/^\\ ', `\\ ${emblem}\\`, ' \\_/'], [`${w}${b}${g} `, `${b}${b}${e}${w}`, ` ${w}${b}${w}`]]
-    };
-  }
-
-  const CAR_SPECS = {
-    compact:  makeCarFrames('C', 'c', 'B', 'k', 'w'),
-    sedan:    makeCarFrames('S', 'w', 'B', 'k', 'c'),
-    van:      makeCarFrames('V', 'm', 'B', 'k', 'w'),
-    sports:   makeCarFrames('Z', 'r', 'B', 'k', 'y'),
-    taxi:     makeCarFrames('T', 'y', 'B', 'k', 'k'),
-    cruiser:  makeCarFrames('P', 'b', 'B', 'k', 'w'),
-    armoured: makeCarFrames('A', 'G', 'B', 'k', 'y'),
-    wreck:    makeCarFrames('X', 'M', 'k', 'k', 'o')
-  };
-
-  const FRAMES = {
-    playerIdle: [[' @ ', '/H\\'], [' y ', 'ccc']],
-    playerWalk: [[' @ ', '/X\\'], [' y ', 'cwc']],
-    pedDown:    [['_@_'], ['sss']],
-    marker:     [['\\V/', ' * '], ['yyy', ' y ']],
-    parcel:     [['[$]'], ['gyg']],
-    'arrow.N':  [['/^\\', ' | '], ['yyy', ' y ']],
-    'arrow.NE': [[' /^', ' / '], [' yy', ' y ']],
-    'arrow.E':  [['-->'], ['yyy']],
-    'arrow.SE': [[' \\ ', ' \\V'], [' y ', ' yy']],
-    'arrow.S':  [[' | ', '\\V/'], [' y ', 'yyy']],
-    'arrow.SW': [[' / ', 'V/ '], [' y ', 'yy ']],
-    'arrow.W':  [['<--'], ['yyy']],
-    'arrow.NW': [['^\\ ', ' \\ '], ['yy ', ' y ']]
-  };
-  for (const [kind, dirs] of Object.entries(CAR_SPECS)) {
-    for (const [dir, frame] of Object.entries(dirs)) {
-      FRAMES[`${kind}.${dir}`] = frame;
-    }
-  }
+  const TILE_W = 6, TILE_H = 4, MARGIN = 10, MAX_SPRITES = 160;
 
   const SCENE = `
   uniform usampler2D u_world;
-  uniform usampler2D u_art;
-  uniform usampler2D u_sprites;
   uniform ivec2 u_origin;
   uniform ivec2 u_window;
   uniform ivec2 u_cam;
-  uniform int u_count;
   uniform float u_day;
   uniform float u_rain;
   uniform vec4 u_beam;
   uniform vec3 u_siren;
   uniform vec3 u_marker;
+  ${global.GlyphArt.SHADER}
+  ${global.GlyphSprites.SHADER}
 
   uvec4 tileAt(ivec2 t){
     ivec2 p=t-u_origin;
     if(p.x<0||p.y<0||p.x>=u_window.x||p.y>=u_window.y)return uvec4(0u,3u,0u,0u);
     return texelFetch(u_world,p,0);
   }
+  const int TW=6,TH=4;
+  bool isRoad(uint t){return t>=4u&&t<=7u;}
+  bool isBlock(uint t){return t==8u||t==9u||t==10u||(t>=13u&&t<=16u);}
+  float valueNoise(vec2 p){
+    vec2 i=floor(p),f=p-i;f=f*f*(3.0-2.0*f);
+    return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+vec2(1,1)),f.x),f.y);
+  }
+  // Six letters written across a tile's middle rows, as roof signs.
+  uint sign6(int x,uint a,uint b,uint c,uint d,uint e,uint f){return x==0?a:x==1?b:x==2?c:x==3?d:x==4?e:f;}
 
   void main(){
     ivec2 grid=ivec2(ceil(u_viewport/u_cellSize));
     ivec2 cell=ivec2(int(gl_FragCoord.x),grid.y-1-int(gl_FragCoord.y));
     ivec2 wc=cell+u_cam;
-    ivec2 t=ivec2(floor(vec2(wc)/vec2(${TILE_W}.0,${TILE_H}.0)));
-    ivec2 l=wc-t*ivec2(${TILE_W},${TILE_H});
+    ivec2 t=ivec2(floor(vec2(wc)/vec2(TW,TH)));
+    ivec2 l=wc-t*ivec2(TW,TH);
     uvec4 data=tileAt(t);
     uint tile=data.r,dist=data.g,meta=data.b,extra=data.a;
-
-    float n=hash21(vec2(t)+vec2(l)*.37),th=hash21(vec2(t)*.73);
+    vec2 world=(vec2(wc)+.5)/vec2(TW,TH);
+    float n=hash21(vec2(wc)*.731+1.7),th=hash21(vec2(t)*.73);
     vec3 ambient=mix(vec3(.24,.28,.44),vec3(1.0,.98,.94),u_day);
 
-    // Headlight cone ahead of player car at night
+    // Headlight cone ahead of the player's car at night
     if(u_day<.75&&u_beam.w>.5){
-      vec2 dp=(vec2(wc)/vec2(${TILE_W}.0,${TILE_H}.0))-u_beam.xy;
+      vec2 dp=world-u_beam.xy;
       float d=length(dp);
       if(d<15.0&&d>.2){
-        vec2 dir=vec2(cos(u_beam.z),sin(u_beam.z));
-        float align=dot(normalize(dp),dir);
-        if(align>.58){
-          float strength=(1.0-d/15.0)*smoothstep(.58,.92,align)*(1.0-u_day);
-          ambient+=vec3(1.1,1.02,.78)*strength*1.35;
-        }
+        float align=dot(normalize(dp),vec2(cos(u_beam.z),sin(u_beam.z)));
+        if(align>.58)ambient+=vec3(1.1,1.02,.78)*(1.0-d/15.0)*smoothstep(.58,.92,align)*(1.0-u_day)*1.35;
       }
     }
     // Police siren ground glow
     if(u_siren.z>.5){
-      float sd=distance(vec2(wc)/vec2(${TILE_W}.0,${TILE_H}.0),u_siren.xy);
-      if(sd<11.0){
-        float pulse=sin(u_time*18.0);
-        vec3 scol=pulse>0.0?vec3(.95,.18,.18):vec3(.18,.42,1.0);
-        ambient+=scol*(1.0-sd/11.0)*.48;
-      }
+      float sd=distance(world,u_siren.xy);
+      if(sd<11.0)ambient+=(sin(u_time*18.0)>0.0?vec3(.95,.18,.18):vec3(.18,.42,1.0))*(1.0-sd/11.0)*.48;
     }
 
-    uint glyph=32u;vec3 fg=vec3(0),bg=vec3(0);uint flags=3u,material=0u;
+    uvec4 nN=tileAt(t+ivec2(0,-1)),nS=tileAt(t+ivec2(0,1)),nW=tileAt(t+ivec2(-1,0)),nE=tileAt(t+ivec2(1,0));
+    // Blocks cast a shadow down and to the right onto the ground.
+    float shadow=1.0;
+    if(!isBlock(tile)){
+      if(isBlock(nN.r)&&l.y<=1)shadow*=.6;
+      if(isBlock(nW.r)&&l.x<=1)shadow*=.62;
+    }
+
+    uint glyph=32u;vec3 base=vec3(0);float bright=1.0;bool glow=false;vec3 glowFg=vec3(0);
+    uint flags=3u;
 
     if(tile==0u){
-      // Water (~)
-      float wave=sin(float(wc.x)*.6+float(wc.y)*.4+u_time*2.5);
-      vec3 tone=vec3(.08,.28,.58)*ambient;
-      bg=tone*.75;fg=tone*1.45+vec3(.04,.08,.12);
-      glyph=wave>.15?126u:(n>.75?45u:32u);
+      float wave=sin(float(wc.x)*.45+float(wc.y)*.6+u_time*2.2)+sin(float(wc.x)*.2-float(wc.y)*.35-u_time*1.3);
+      base=vec3(.08,.28,.56)*(.9+.1*wave);
+      glyph=wave>1.1?126u:wave>.7?45u:(n>.95?46u:32u);
+      bool shore=(l.y==0&&nN.r!=0u)||(l.y==TH-1&&nS.r!=0u)||(l.x==0&&nW.r!=0u)||(l.x==TW-1&&nE.r!=0u);
+      if(shore){glyph=fract(u_time*.8+n)>.5?126u:45u;base=vec3(.5,.7,.85);}
     }else if(tile==1u){
-      // Grass / Park (")
-      vec3 tone=vec3(.18,.48,.20)*ambient*(.9+th*.2);
-      bg=tone*.62;fg=tone*1.32;
-      glyph=n>.55?34u:(n>.25?39u:46u);
-    }else if(tile==2u||tile==3u){
-      // Pavement (.) or Plaza (,)
-      vec3 base=tile==3u?vec3(.48,.42,.36):vec3(.38,.38,.42);
-      vec3 lit=base*ambient;
-      bg=lit*.62;fg=lit*1.18;
-      glyph=tile==3u?( (l.x+l.y)%2==0?44u:46u ):46u;
+      float m=valueNoise(vec2(wc)*vec2(.25,.37));
+      base=mix(vec3(.16,.40,.16),vec3(.26,.54,.22),m);
+      glyph=n>.88?34u:n>.75?39u:n>.66?44u:32u;
+      // Some park tiles hold a tree: a lit crown seen from above.
+      if(th>.6){
+        vec2 d=vec2(float(l.x)+.5-3.0,(float(l.y)+.5-2.0)*1.5)/2.6;
+        float r=length(d);
+        if(r<1.0){
+          base=mix(vec3(.10,.32,.12),vec3(.30,.60,.24),clamp(1.0-r+(-d.x-d.y)*.4,0.0,1.0));
+          glyph=r<.45?38u:r<.8?37u:42u;
+        }
+      }
+      if(n>.99){glyph=42u;base=vec3(.95,.7,.85);}
+    }else if(tile==2u){
+      base=vec3(.50,.50,.54)*(.92+th*.12);
+      bool joint=l.x==0||l.y==0;
+      glyph=joint?(l.y==0?95u:124u):(n>.9?46u:32u);
+      if(joint)bright=.82;
+      bool kerb=(l.y==TH-1&&isRoad(nS.r))||(l.y==0&&isRoad(nN.r))||(l.x==0&&isRoad(nW.r))||(l.x==TW-1&&isRoad(nE.r));
+      if(kerb){glyph=61u;bright=1.18;}
+    }else if(tile==3u){
+      bool herring=((l.x+l.y*2+t.x+t.y)%4)<2;
+      base=herring?vec3(.62,.50,.40):vec3(.54,.42,.34);
+      glyph=herring?61u:124u;
     }else if(tile>=4u&&tile<=7u){
-      // Road (4), Avenue (5), Intersection (6), Bridge (7)
-      vec3 asphalt=tile==7u?vec3(.28,.26,.24):vec3(.18,.19,.22);
-      vec3 lit=asphalt*ambient;
-      bg=lit*.68;fg=lit*1.4;
-      glyph=32u;
-      bool roadN=tileAt(t+ivec2(0,-1)).r>=4u&&tileAt(t+ivec2(0,-1)).r<=7u;
-      bool roadS=tileAt(t+ivec2(0,1)).r>=4u&&tileAt(t+ivec2(0,1)).r<=7u;
-      bool roadW=tileAt(t+ivec2(-1,0)).r>=4u&&tileAt(t+ivec2(-1,0)).r<=7u;
-      bool roadE=tileAt(t+ivec2(1,0)).r>=4u&&tileAt(t+ivec2(1,0)).r<=7u;
+      float speck=valueNoise(vec2(wc)*.5);
+      base=(tile==7u?vec3(.30,.27,.24):vec3(.20,.21,.24))*(.9+speck*.18);
+      glyph=n>.94?46u:32u;
+      bool roadN=isRoad(nN.r),roadS=isRoad(nS.r),roadW=isRoad(nW.r),roadE=isRoad(nE.r);
+      vec3 paint=tile==5u?vec3(.92,.78,.28):vec3(.82,.84,.86);
       if(tile==6u){
-        // Intersection with zebra markings and traffic light corners
-        if((l.x==0||l.x==2)&&l.y==0&&(t.x+t.y)%2==0){
-          glyph=58u;
-          // Traffic light colour from meta (1=NS green, 2=NS yellow, 3=EW green, 4=EW yellow)
-          if(meta==1u)fg=vec3(.25,.95,.35);
-          else if(meta==3u)fg=vec3(.95,.28,.22);
-          else fg=vec3(1.0,.85,.25);
-        }else if(l.x==1&&l.y==1){
-          glyph=43u;fg=lit*1.6;
+        // Zebra crossings where a street leaves the junction, traffic lights on alternate corners.
+        bool zebraNS=(l.y==0&&roadN&&nN.r!=6u)||(l.y==TH-1&&roadS&&nS.r!=6u);
+        bool zebraEW=(l.x==0&&roadW&&nW.r!=6u)||(l.x==TW-1&&roadE&&nE.r!=6u);
+        if(zebraNS&&l.x%2==0){glyph=124u;base=vec3(.82,.82,.82);}
+        if(zebraEW&&l.y%2==0){glyph=61u;base=vec3(.82,.82,.82);}
+        if(l.x==0&&l.y==0&&(t.x+t.y)%2==0){
+          glyph=79u;glow=true;
+          glowFg=meta==1u?vec3(.25,.95,.35):meta==3u?vec3(.95,.28,.22):vec3(1.0,.85,.25);
         }
       }else if(tile==7u){
-        // Bridge rails and deck
-        if(!roadN&&l.y==0){glyph=61u;fg=vec3(.75,.68,.48)*ambient;}
-        else if(!roadS&&l.y==1){glyph=61u;fg=vec3(.75,.68,.48)*ambient;}
-        else if(!roadW&&l.x==0){glyph=124u;fg=vec3(.75,.68,.48)*ambient;}
-        else if(!roadE&&l.x==2){glyph=124u;fg=vec3(.75,.68,.48)*ambient;}
-        else if(l.x==1){glyph=roadN||roadS?124u:45u;fg=vec3(.65,.62,.52)*ambient;}
+        // Bridge deck planks and side rails
+        glyph=(roadN||roadS)?(l.y%2==0?61u:32u):(l.x%2==0?124u:32u);
+        base=vec3(.42,.34,.26);
+        if((!roadW&&l.x==0)||(!roadE&&l.x==TW-1)||(!roadN&&l.y==0)||(!roadS&&l.y==TH-1)){glyph=35u;base=vec3(.72,.66,.5);}
       }else{
-        // Straight road/avenue lane markings (-, =, |, :)
-        bool vert=(roadN||roadS)&&!(roadW&&roadE);
-        if(vert){
-          if(l.x==1&&(t.y+l.y)%2==0){glyph=tile==5u?58u:124u;fg=tile==5u?vec3(.88,.76,.28)*ambient:vec3(.72,.74,.78)*ambient;}
-        }else{
-          if(l.y==0&&(t.x+l.x)%2==0){glyph=tile==5u?61u:45u;fg=tile==5u?vec3(.88,.76,.28)*ambient:vec3(.72,.74,.78)*ambient;}
+        // Lines run where two lanes meet: on the shared tile edge, or down the middle of a lone lane.
+        // Which way the street runs: the direction its road continues furthest.
+        int runV=0,runH=0;
+        for(int k=1;k<=3;k++){
+          runV+=int(isRoad(tileAt(t+ivec2(0,k)).r))+int(isRoad(tileAt(t-ivec2(0,k)).r));
+          runH+=int(isRoad(tileAt(t+ivec2(k,0)).r))+int(isRoad(tileAt(t-ivec2(k,0)).r));
         }
+        bool vert=runV>runH;
+        if(vert){
+          bool dash=tile==5u||((t.y*TH+l.y)%4)<2;
+          bool line=roadW&&isRoad(nW.r)?l.x==0:(!roadE&&l.x==2);
+          if(line&&dash){glyph=124u;base=paint;}
+        }else{
+          bool dash=tile==5u||((t.x*TW+l.x)%6)<3;
+          bool line=roadN?l.y==0:(!roadS&&l.y==2);
+          if(line&&dash){glyph=45u;base=paint;}
+        }
+        if(extra==1u&&(l.x==1||l.x==4)&&glyph==32u){glyph=34u;base*=.55;}
       }
-      // Fading tyre marks stored in extra bit
-      if(extra==1u&&l.x==1){glyph=59u;fg=vec3(.07,.07,.08);}
-    }else if(tile==8u||tile==9u||tile==10u){
-      // Buildings (8), Containers (9), Cranes (10) tinted by district
-      vec3 roof=dist==0u?vec3(.34,.52,.66):dist==1u?vec3(.58,.26,.68):dist==2u?vec3(.64,.36,.26):vec3(.56,.48,.28);
-      if(tile==9u)roof=meta==1u?vec3(.74,.28,.22):meta==2u?vec3(.24,.48,.74):vec3(.74,.58,.20);
-      if(tile==10u)roof=vec3(.85,.68,.20);
-      bool edge=tileAt(t+ivec2(0,-1)).r!=tile||tileAt(t+ivec2(0,1)).r!=tile||tileAt(t+ivec2(-1,0)).r!=tile||tileAt(t+ivec2(1,0)).r!=tile;
-      vec3 lit=roof*ambient*(.85+th*.25);
-      bg=lit*(edge?.72:.54);fg=lit*1.35;
-      glyph=tile==10u?42u:tile==9u?61u:(meta==1u?35u:meta==2u?37u:64u);
-      // Lit windows at night and neon roofs on The Strip
-      if(u_day<.55&&!edge&&n>.62){
-        glyph=58u;
-        fg=dist==1u?(n>.8?vec3(1.0,.3,.85):vec3(.25,.95,1.0)):vec3(1.0,.86,.45);
-      }else if(dist==1u&&edge&&u_day<.65){
-        fg= (t.x+t.y)%2==0?vec3(1.0,.32,.82):vec3(.25,.9,1.0);
-      }
+    }else if(tile==8u){
+      // Roofs: parapet edge, gravel, and a vent or skylight per tile.
+      vec3 roof=dist==0u?vec3(.36,.50,.62):dist==1u?vec3(.50,.28,.58):dist==2u?vec3(.60,.38,.30):vec3(.54,.48,.32);
+      roof*=.88+float(meta%3u)*.08;
+      bool edge=(l.y==0&&nN.r!=8u)||(l.y==TH-1&&nS.r!=8u)||(l.x==0&&nW.r!=8u)||(l.x==TW-1&&nE.r!=8u);
+      base=roof;glyph=n>.8?58u:n>.55?46u:32u;
+      if(edge){glyph=(l.y==0||l.y==TH-1)?61u:124u;base=roof*1.35;}
+      else if(th>.7&&l.x>=2&&l.x<=3&&l.y>=1&&l.y<=2){glyph=35u;base=vec3(.62,.64,.68);}
+      else if(th<.18&&l.x>=1&&l.x<=4&&l.y==1){glyph=61u;base=vec3(.5,.7,.9);if(u_day<.55){glow=true;glowFg=vec3(1.0,.86,.45);}}
+      // At night a few roof lights burn; The Strip trims its rooftops in neon, one colour per tile.
+      if(u_day<.55&&!edge&&n>.965){glyph=58u;glow=true;glowFg=dist==1u?(th>.5?vec3(1.0,.3,.85):vec3(.25,.95,1.0)):vec3(1.0,.86,.45);}
+      if(dist==1u&&edge&&u_day<.65){glow=true;glowFg=th>.5?vec3(1.0,.32,.82):vec3(.25,.9,1.0);}
+    }else if(tile==9u){
+      vec3 col=meta==1u?vec3(.74,.28,.22):meta==2u?vec3(.24,.48,.74):vec3(.74,.58,.20);
+      bool ridge=l.x%2==0;
+      base=col*(ridge?1.1:.78);glyph=ridge?124u:58u;
+      if(l.y==0||l.y==TH-1){glyph=61u;base=col*.6;}
+    }else if(tile==10u){
+      bool beam=(l.x+l.y)%3==0||(l.x-l.y+12)%3==0;
+      base=beam?vec3(.92,.74,.18):vec3(.18,.16,.12);glyph=beam?((l.x+l.y)%3==0?47u:92u):32u;
     }else if(tile==11u){
-      // Stunt ramp (^)
-      bg=vec3(.35,.28,.14)*ambient;fg=vec3(1.0,.85,.25);
-      glyph=94u;
+      bool chev=((l.x+l.y)%4)<2;
+      base=chev?vec3(.95,.8,.2):vec3(.2,.18,.12);glyph=chev?94u:61u;
     }else if(tile==12u){
-      // Payphone ($)
-      float ring=sin(u_time*10.0)>.0?1.2:.85;
-      bg=vec3(.12,.32,.18)*ambient;fg=vec3(.35,1.0,.45)*ring;
-      glyph=l.x==1?36u:91u+uint(l.x==2)*2u;
+      float ring=sin(u_time*10.0)>0.0?1.25:.85;
+      base=vec3(.16,.40,.22);glyph=l.y==0||l.y==TH-1?61u:(l.x==0||l.x==TW-1?124u:32u);
+      if((l.x==2||l.x==3)&&(l.y==1||l.y==2)){glyph=36u;glow=true;glowFg=vec3(.35,1.0,.45)*ring;}
     }else if(tile==13u){
-      // Respray shop
-      bg=vec3(.16,.34,.42)*ambient;fg=vec3(.4,1.0,.95);
-      glyph=l.y==0?(l.x==0?82u:l.x==1?69u:80u):61u;
+      base=vec3(.18,.40,.46);glyph=(l.x+l.y)%3==0?47u:32u;
+      if(l.y==1&&l.x>=0&&l.x<=4){glyph=sign6(l.x,83u,80u,82u,65u,89u,32u);glow=true;glowFg=vec3(.4,1.0,.95);}
     }else if(tile==14u){
-      // Garage
-      bg=vec3(.28,.32,.16)*ambient;fg=vec3(.85,.95,.4);
-      glyph=l.y==0?(l.x==0?71u:l.x==1?65u:82u):61u;
+      base=vec3(.30,.34,.18);glyph=l.y%2==0?61u:45u;
+      if(l.y==1){glyph=sign6(l.x,71u,65u,82u,65u,71u,69u);glow=true;glowFg=vec3(.85,.95,.4);}
     }else if(tile==15u){
-      // Hospital (+)
-      bg=vec3(.45,.45,.50)*ambient;fg=vec3(1.0,.28,.28);
-      glyph=l.x==1?43u:72u;
+      base=vec3(.78,.78,.82);glyph=n>.7?46u:32u;
+      if((l.x==2||l.x==3)||((l.y==1||l.y==2)&&l.x>=1&&l.x<=4)){glyph=35u;base=vec3(.9,.2,.2);}
     }else if(tile==16u){
-      // Police station
-      bg=vec3(.16,.24,.46)*ambient;fg=vec3(.55,.78,1.0);
-      glyph=l.y==0?(l.x==0?80u:l.x==1?79u:76u):35u;
+      base=vec3(.18,.26,.50);glyph=l.y%2==0?61u:32u;
+      if(l.y==1){glyph=sign6(l.x,80u,79u,76u,73u,67u,69u);glow=true;glowFg=vec3(.55,.78,1.0);}
     }else if(tile==17u){
-      // Freighter dock drop-off
-      bg=vec3(.36,.28,.16)*ambient;fg=vec3(1.0,.84,.3);
-      glyph=l.y==0?61u:35u;
+      base=vec3(.42,.32,.20);glyph=l.x%2==0?124u:61u;
+      if(l.y==0||l.y==TH-1){glyph=35u;base=vec3(.3,.24,.16);}
     }
+    vec3 lit=base*ambient*bright*shadow;
+    vec3 fg=lit*1.3,bg=lit*.66;
+    if(glow){fg=glowFg;bg=max(bg,glowFg*.25);}
 
     // Highlight active mission drop/checkpoint ring on the ground
     if(u_marker.z>.5){
-      float md=distance(vec2(t)+.5,u_marker.xy);
+      float md=distance(world,u_marker.xy);
       if(md>1.6&&md<3.1){
         float p=.75+.25*sin(u_time*8.0);
-        fg=vec3(1.0,.88,.25)*p;
-        bg=mix(bg,vec3(.45,.36,.08),0.45);
+        fg=vec3(1.0,.88,.25)*p;bg=mix(bg,vec3(.45,.36,.08),0.45);
         if(glyph==32u)glyph=42u;
       }
     }
-
     // Light rain streaks
-    if(u_rain>.5&&hash21(vec2(cell)+floor(u_time*24.0))>.965){
-      glyph=47u;fg=vec3(.55,.7,1.0);
-    }
+    if(u_rain>.5&&hash21(vec2(cell)+floor(u_time*24.0))>.975){glyph=47u;fg=vec3(.55,.7,1.0);}
 
-    // Sprites (cars, player, pedestrians, particles, markers)
-    for(int i=0;i<u_count;i++){
-      uvec4 a=texelFetch(u_sprites,ivec2(i,0),0),b=texelFetch(u_sprites,ivec2(i,1),0),c=texelFetch(u_sprites,ivec2(i,2),0);
-      ivec2 pos=ivec2(int(a.r)+int(a.g)*256-2048,int(a.b)+int(a.a)*256-2048);
-      ivec2 rel=cell-pos;
-      if(rel.x<0||rel.y<0||rel.x>=int(b.g)||rel.y>=int(b.b))continue;
-      uvec4 art=int(b.r)==255?uvec4(c.r,c.g,c.b,c.a):texelFetch(u_art,ivec2(rel.x,int(b.r)+rel.y),0);
-      if(art.r==32u||art.r==0u)continue;
-      vec3 colour=vec3(art.gba)/255.0;
-      bool hit=(int(b.a)&1)==1,lit=(int(b.a)&2)==2;
-      fg=hit?vec3(1.0):lit?colour:colour*max(ambient*1.15,vec3(.38));
-      bg=mix(bg,fg*.22,0.55);
-      glyph=art.r;
-      break;
-    }
-
-    writeCell(glyph,material,flags,1.0,fg,bg);
-  }`;
-
-  function compileFrames() {
-    const hex = value => [1, 3, 5].map(i => parseInt(value.slice(i, i + 2), 16));
-    const names = Object.keys(FRAMES);
-    let rows = 0;
-    for (const name of names) rows += FRAMES[name][0].length;
-    const width = 12, data = new Uint8Array(width * rows * 4), index = {};
-    let y = 0;
-    for (const name of names) {
-      const [text, colours] = FRAMES[name], h = text.length, w = text[0].length;
-      for (const [r, line] of text.entries()) {
-        if (line.length !== w || colours[r].length !== w) {
-          throw new Error(`Frame ${name} row ${r} is uneven.`);
-        }
-        for (let x = 0; x < w; x++) {
-          const at = ((y + r) * width + x) * 4, rgb = hex(PALETTE[colours[r][x]] || '#ffffff');
-          data[at] = line.charCodeAt(x);
-          data[at + 1] = rgb[0]; data[at + 2] = rgb[1]; data[at + 3] = rgb[2];
-        }
-      }
-      index[name] = { y, w, h };
-      y += h;
-    }
-    return { data, width, height: rows, index };
+    // Cars, people, markers and particles; earlier sprites draw on top.
+    spriteCell(cell,ambient,glyph,fg,bg);
+    writeCell(glyph,0u,flags,1.0,fg,bg);
   }
-
-  const DIRS = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
-  function headingDir(angle) {
-    const norm = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-    const idx = Math.round((norm / (Math.PI * 2)) * 8) % 8;
-    return DIRS[idx];
-  }
+  `;
 
   class JoyrideView {
     constructor(canvas) {
@@ -292,15 +216,14 @@
         uniforms: ['world', 'art', 'sprites', 'origin', 'window', 'cam', 'count', 'day', 'rain', 'beam', 'siren', 'marker'],
         far: 2
       });
-      this.art = compileFrames();
-      this.engine.setTexture('art', 6, this.art.width, this.art.height, this.art.data);
-      this.spriteData = new Uint8Array(MAX_SPRITES * 3 * 4);
-      this.engine.setTexture('sprites', 7, MAX_SPRITES, 3, this.spriteData);
+      this.sprites = new global.GlyphSprites(this.engine, global.JoyrideArt.build(), { max: MAX_SPRITES });
       this.markStamp = new Uint32Array(160 * 160);
       this.stampId = 1;
       this.columns = 1;
       this.rows = 1;
     }
+
+    size(name) { return this.sprites.size(name); }
 
     resize(width, height, cellSize) {
       this.engine.resize(width, height, cellSize);
@@ -359,25 +282,11 @@
       this.origin = [ox, oy];
     }
 
+    // sprites: GlyphSprites entries (art with flip, flash, lit and tint, or char + colour)
     draw({ state, cam, sprites, day, rain, beam, siren, marker, time, tint }) {
-      const data = this.spriteData, count = Math.min(MAX_SPRITES, sprites.length);
-      const put = (i, row, a, b, c, d) => {
-        const at = (row * MAX_SPRITES + i) * 4;
-        data[at] = a; data[at + 1] = b; data[at + 2] = c; data[at + 3] = d;
-      };
-      for (let i = 0; i < count; i++) {
-        const s = sprites[i], x = s.x + 2048, y = s.y + 2048, flags = (s.flash ? 1 : 0) | (s.lit ? 2 : 0);
-        put(i, 0, x & 255, x >> 8, y & 255, y >> 8);
-        if (s.frame) {
-          const f = this.art.index[s.frame];
-          put(i, 1, f.y, f.w, f.h, flags);
-          put(i, 2, 0, 0, 0, 0);
-        } else {
-          put(i, 1, 255, 1, 1, flags);
-          put(i, 2, s.char.charCodeAt(0), s.colour[0], s.colour[1], s.colour[2]);
-        }
-      }
-      this.engine.setTexture('sprites', 7, MAX_SPRITES, 3, data);
+      this.sprites.clear();
+      for (const sprite of sprites) if (!this.sprites.add(sprite)) break;
+      const count = this.sprites.upload();
       this.upload(state, cam);
       this.engine.render((gl, u) => {
         gl.uniform2i(u.origin, this.origin[0], this.origin[1]);
@@ -397,7 +306,5 @@
 
   JoyrideView.TILE_W = TILE_W;
   JoyrideView.TILE_H = TILE_H;
-  JoyrideView.FRAMES = FRAMES;
-  JoyrideView.headingDir = headingDir;
   global.JoyrideView = JoyrideView;
 })(typeof window !== 'undefined' ? window : globalThis);
