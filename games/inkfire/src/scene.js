@@ -34,17 +34,17 @@
   }
 
   vec3 calcLight(vec3 p, vec3 n, vec3 base) {
-    vec3 total = base * vec3(0.14, 0.14, 0.18);
+    vec3 total = base * vec3(0.18, 0.19, 0.24);
     vec3 toCam = u_eye - p;
     float camDist = length(toCam);
     float flashBoost = 1.0 + u_muzzleFlash * 1.6;
-    total += base * vec3(0.95, 0.85, 0.70) * (0.85 * flashBoost) * max(0.2, dot(n, toCam / max(camDist, 0.01))) / (1.0 + camDist * camDist * 0.14);
+    total += base * vec3(0.95, 0.88, 0.76) * (0.95 * flashBoost) * max(0.22, dot(n, toCam / max(camDist, 0.01))) / (1.0 + camDist * camDist * 0.12);
     for (int i = 0; i < ${MAX_LIGHTS}; i++) {
       if (i >= u_lightCount) break;
       vec3 toL = u_lights[i].xyz - p;
       float d = length(toL);
       float intensity = u_lights[i].w;
-      total += base * u_lightColours[i] * intensity * max(0.18, dot(n, toL / max(d, 0.01))) / (1.0 + d * d * 0.22);
+      total += base * u_lightColours[i] * intensity * max(0.20, dot(n, toL / max(d, 0.01))) / (1.0 + d * d * 0.18);
     }
     return total;
   }
@@ -53,42 +53,77 @@
     return t * cellAngle() / max(0.15, abs(dot(n, -rd)));
   }
 
-  uint wallGlyph(vec2 uv, float fp, uint kind, out float shade) {
+  uint wallGlyph(vec2 uv, float fp, uint kind, inout vec3 base, out float shade, out bool selfLit) {
+    selfLit = false;
     if (kind == 5u) {
-      // Exit portal wall trim
-      shade = 0.9 + 0.25 * sin(uv.y * 8.0 - u_time * 4.0);
+      shade = 0.95 + 0.25 * sin(uv.y * 8.0 - u_time * 4.0);
+      base = vec3(0.28, 0.90, 0.45);
+      selfLit = true;
       return fract(uv.y * 3.0) < 0.3 ? 61u : 42u;
     }
-    float row = floor(uv.y / 0.45);
-    float u = uv.x / 0.9 + mod(row, 2.0) * 0.5;
-    vec2 local = vec2(fract(u), fract(uv.y / 0.45));
-    float panel = hash21(vec2(floor(u), row));
-    shade = 0.80 + 0.28 * panel;
-    if (fp < 0.20) {
-      bool hSeam = local.y < 0.10;
-      bool vSeam = local.x < 0.07;
-      if (hSeam && vSeam) { shade *= 0.55; return 43u; }
-      if (hSeam) { shade *= 0.62; return 45u; }
-      if (vSeam) { shade *= 0.62; return 124u; }
+    // Lower hazard dado stripe (yellow/charcoal diagonal bars) and upper conduit header
+    if (uv.y < 0.24) {
+      bool stripe = fract((uv.x + uv.y) * 2.2) < 0.5;
+      base = stripe ? vec3(0.86, 0.64, 0.14) : vec3(0.18, 0.19, 0.22);
+      shade = uv.y > 0.20 ? 1.15 : 0.92;
+      return uv.y > 0.20 ? 61u : (stripe ? 47u : 35u);
     }
-    float detail = hash21(floor(uv * vec2(6.0, 5.0) / max(1.0, fp * 4.0)));
-    return panel > 0.85 ? 35u : detail > 0.65 ? 61u : detail > 0.30 ? 58u : 46u;
+    if (uv.y > H - 0.26) {
+      vec2 hl = vec2(fract(uv.x * 2.0), (uv.y - (H - 0.26)) / 0.26);
+      base = vec3(0.32, 0.35, 0.42);
+      if (hl.y > 0.35 && hl.y < 0.60 && fract(uv.x * 0.5) < 0.18) {
+        base = vec3(0.35, 0.85, 0.95); shade = 1.05; selfLit = true; return 61u;
+      }
+      shade = hl.y < 0.18 ? 0.55 : hl.y > 0.80 ? 1.2 : 0.9;
+      return hl.x < 0.08 ? 124u : 61u;
+    }
+    float row = floor(uv.y / 0.42);
+    float u = uv.x / 0.85 + mod(row, 2.0) * 0.5;
+    vec2 local = vec2(fract(u), fract(uv.y / 0.42));
+    float panel = hash21(vec2(floor(u), row));
+    shade = 0.78 + 0.30 * panel;
+    if (fp < 0.22) {
+      bool hSeam = local.y < 0.10;
+      bool vSeam = local.x < 0.08;
+      if (hSeam && vSeam) { shade *= 0.48; return 43u; }
+      if (hSeam) { shade *= 0.54; return 45u; }
+      if (vSeam) { shade *= 0.54; return 124u; }
+      if (local.y > 0.86) { shade *= 1.26; return 61u; }
+      if ((local.x > 0.16 && local.x < 0.24 || local.x > 0.78 && local.x < 0.86) && (local.y < 0.25 || local.y > 0.72)) {
+        shade *= 1.18; return 79u;
+      }
+    }
+    // Recessed vent louver / amber monitor slit on occasional mid-wall panels
+    if (panel > 0.82 && uv.y > 1.0 && uv.y < 1.55 && local.x > 0.25 && local.x < 0.75) {
+      if (local.y > 0.40 && local.y < 0.58) { base = vec3(0.95, 0.58, 0.18); shade = 1.0; selfLit = true; return 61u; }
+      shade *= 0.62; return 58u;
+    }
+    float detail = hash21(floor(uv * vec2(7.0, 6.0) / max(1.0, fp * 4.5)));
+    return panel > 0.86 ? 35u : detail > 0.65 ? 61u : detail > 0.30 ? 58u : 46u;
   }
 
-  uint floorGlyph(vec2 xz, uint kind, float fp, out float shade) {
+  uint floorGlyph(vec2 xz, uint kind, float fp, inout vec3 base, out float shade, out bool selfLit) {
+    selfLit = false;
     if (kind == 5u) {
-      shade = 0.95 + 0.2 * sin(u_time * 5.0);
-      return 62u; // '>' exit pad
+      vec2 fl = fract(xz) - 0.5;
+      float r = length(fl);
+      shade = 0.95 + 0.22 * sin(u_time * 5.0 - r * 12.0);
+      selfLit = true;
+      base = r < 0.32 ? vec3(0.35, 1.0, 0.55) : vec3(0.18, 0.68, 0.35);
+      return r > 0.40 ? 35u : 62u;
     }
     vec2 local = fract(xz);
     float tileHash = hash21(floor(xz) * 1.3);
-    shade = 0.78 + 0.25 * tileHash;
-    if (fp < 0.28 && (local.x < 0.06 || local.y < 0.06)) {
-      shade *= 0.6;
-      return (local.x < 0.06 && local.y < 0.06) ? 43u : local.x < 0.06 ? 124u : 45u;
+    shade = 0.78 + 0.26 * tileHash;
+    if (fp < 0.30) {
+      if (local.x < 0.06 || local.y < 0.06) {
+        shade *= 0.50;
+        return (local.x < 0.06 && local.y < 0.06) ? 43u : local.x < 0.06 ? 124u : 45u;
+      }
+      if (local.x > 0.92 || local.y > 0.92) { shade *= 1.18; return 46u; }
     }
-    float grit = hash21(floor(xz * 5.0 / max(1.0, fp * 5.0)));
-    return grit > 0.82 ? 44u : grit > 0.65 ? 58u : 46u;
+    float grit = hash21(floor(xz * 7.0 / max(1.0, fp * 5.0)));
+    return ((int(floor(xz.x * 8.0)) + int(floor(xz.y * 8.0))) % 4 == 0 && fp < 0.16) ? 47u : grit > 0.80 ? 44u : grit > 0.60 ? 58u : 46u;
   }
 
   ${global.GlyphArt.SHADER}
@@ -141,40 +176,63 @@
       vec3 n;
       vec3 base;
       float shade = 1.0;
+      bool worldLit = false;
       if (tWall < tPlane) {
         n = wallN;
         vec2 uv = vec2(abs(n.x) > 0.5 ? p.z : p.x, p.y);
         float fp = footprint(tHit, n, rd);
         if (wallKind == 2u || wallKind == 3u || wallKind == 4u) {
-          material = 3u;
-          base = wallKind == 3u ? vec3(0.78, 0.20, 0.16) : wallKind == 4u ? vec3(0.18, 0.42, 0.85) : vec3(0.46, 0.50, 0.56);
-          float band = fract((uv.y - doorOpen * H) * 2.5);
-          float bar = fract(uv.x * 4.0);
-          shade = band < 0.2 ? 1.15 : bar < 0.25 ? 0.95 : 0.70;
-          glyph = band < 0.2 ? 61u : bar < 0.25 ? 124u : 35u;
+          float lx = fract(uv.x);
+          if (lx < 0.11 || lx > 0.89 || uv.y > H - 0.22) {
+            material = 1u;
+            base = wallKind == 3u ? vec3(0.85, 0.22, 0.18) : wallKind == 4u ? vec3(0.22, 0.55, 0.95) : vec3(0.36, 0.40, 0.46);
+            shade = uv.y > H - 0.22 ? 1.15 : 0.85;
+            worldLit = (wallKind == 3u || wallKind == 4u) && abs(uv.y - 1.15) < 0.18;
+            glyph = uv.y > H - 0.22 ? 61u : 124u;
+          } else {
+            material = 3u;
+            base = wallKind == 3u ? vec3(0.76, 0.22, 0.18) : wallKind == 4u ? vec3(0.20, 0.46, 0.88) : vec3(0.48, 0.52, 0.58);
+            float band = fract((uv.y - doorOpen * H) * 2.5);
+            float bar = fract(uv.x * 5.0);
+            shade = band < 0.20 ? 1.22 : bar < 0.22 ? 0.96 : 0.70;
+            glyph = band < 0.20 ? 61u : bar < 0.22 ? 124u : 35u;
+          }
         } else {
           material = 1u;
-          base = vec3(0.44, 0.43, 0.48);
-          glyph = wallGlyph(uv, fp, wallKind, shade);
+          base = vec3(0.46, 0.47, 0.53);
+          glyph = wallGlyph(uv, fp, wallKind, base, shade, worldLit);
         }
       } else if (rd.y < 0.0) {
         n = vec3(0.0, 1.0, 0.0);
         uint kind = tile(ivec2(floor(p.xz))).r;
         float fp = footprint(tHit, n, rd);
         material = kind == 5u ? 5u : 2u;
-        base = kind == 5u ? vec3(0.30, 0.85, 0.42) : vec3(0.32, 0.30, 0.34);
-        glyph = floorGlyph(p.xz, kind, fp, shade);
+        base = kind == 5u ? vec3(0.30, 0.85, 0.42) : vec3(0.33, 0.33, 0.38);
+        glyph = floorGlyph(p.xz, kind, fp, base, shade, worldLit);
       } else {
         n = vec3(0.0, -1.0, 0.0);
         material = 4u;
-        base = vec3(0.24, 0.23, 0.28);
-        float rib = fract(p.x * 0.5);
-        shade = rib < 0.12 ? 1.15 : 0.68;
-        glyph = rib < 0.12 ? 61u : 46u;
+        vec2 cl = fract(p.xz * 0.5);
+        float rib = cl.x;
+        if (rib > 0.42 && rib < 0.58 && cl.y > 0.20 && cl.y < 0.80) {
+          // Overhead illuminated strip luminaire
+          base = vec3(0.74, 0.90, 1.0);
+          shade = 1.05;
+          worldLit = true;
+          glyph = cl.y < 0.26 || cl.y > 0.74 ? 45u : 61u;
+        } else if (rib < 0.14) {
+          base = vec3(0.26, 0.28, 0.34);
+          shade = rib < 0.04 || rib > 0.10 ? 0.72 : 1.18;
+          glyph = 61u;
+        } else {
+          base = vec3(0.22, 0.23, 0.28);
+          shade = 0.70;
+          glyph = (fract(p.z * 0.5) < 0.06) ? 124u : 46u;
+        }
       }
-      vec3 lit = calcLight(p, n, base * shade);
-      fg = lit * 1.28 + vec3(0.015);
-      bg = lit * 0.32;
+      vec3 lit = worldLit ? base * 1.15 : calcLight(p, n, base * shade);
+      fg = lit * 1.32 + vec3(0.018);
+      bg = lit * 0.34;
     }
 
     // Camera-facing atlas billboards
@@ -218,7 +276,7 @@
       flags = selfLit ? 3u : 0u;
     }
 
-    float fog = 1.0 - exp(-tHit * 0.055);
+    float fog = 1.0 - exp(-tHit * 0.044);
     fg = mix(fg, fogColour, fog);
     bg = mix(bg, fogColour * 0.6, fog);
     if (tHit >= u_far) {
@@ -230,8 +288,8 @@
     // First-person weapon viewmodel overlay at bottom center
     if (u_weaponFrame >= 0) {
       vec2 wuv = vec2(
-        (screen.x - u_weaponBobX) * 1.35 + 0.5,
-        (screen.y + 1.0 - u_weaponBobY) * 1.25
+        (screen.x - u_weaponBobX) * 1.25 + 0.5,
+        (screen.y + 1.0 - u_weaponBobY) * 1.15
       );
       if (wuv.x >= 0.0 && wuv.x < 1.0 && wuv.y >= 0.0 && wuv.y < 1.0) {
         int slotX = (u_weaponFrame & 15) * ${SLOT};
