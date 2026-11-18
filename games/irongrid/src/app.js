@@ -312,7 +312,7 @@
       const was = this.mode;
       this.mode = mode;
       for (const name of ['title', 'pause', 'help', 'reward', 'end']) this.el[name].hidden = mode !== name;
-      this.el.hud.hidden = mode === 'title' || mode === 'end' || mode === 'reward';
+      this.el.hud.hidden = mode !== 'play';
       document.body.dataset.mode = mode;
       if (mode === 'title') this.refreshTitle();
       if (mode === 'pause' && this.state) {
