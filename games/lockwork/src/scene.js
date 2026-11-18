@@ -59,9 +59,11 @@
       }else if(tile==3u){
         bool pressed=(meta&2u)!=0u;
         bool rim=l.x==1||l.x==TW-2||l.y==1||l.y==TH-2;
+        bool innerPad=l.x>=2&&l.x<=TW-3&&l.y>=2&&l.y<=TH-3;
         if(l.x>=1&&l.x<=TW-2&&l.y>=1&&l.y<=TH-2){
-          base=pressed?vec3(.4,.32,.1):vec3(.28,.18,.1);glyph=rim?(l.y==1||l.y==TH-2?61u:124u):95u;
-          if(pressed&&rim){lit=true;litFg=vec3(1.0,.86,.35);}
+          base=pressed?vec3(.46,.38,.12):vec3(.34,.23,.12);
+          glyph=rim?(l.y==1||l.y==TH-2?61u:124u):(innerPad?95u:32u);
+          if(rim){lit=true;litFg=pressed?vec3(1.0,.90,.38):vec3(.88,.62,.28);}
         }
       }else if(tile==4u){
         bool open=(meta&2u)!=0u;
