@@ -57,6 +57,20 @@ Steps quality down when frames run long and never steps back up. See [`PERF.md`]
 - `quality.setting.maxDpr`: Assign to `engine.maxDpr` before `engine.resize(...)`.
 - `quality.cell([w, h])`: Scales a base cell size for the current level.
 
+## `GlyphSprites` (`engine/glyph-sprites.js`)
+
+Draws `GlyphArt` frames into a 2D scene, one shaded letter per art pixel. Burrow, Joyride, Bannerfall, Ricochet, Irongrid and Lockwork use it.
+
+- Include `GlyphArt.SHADER` and then `GlyphSprites.SHADER` in the scene shader, list `'art'`, `'sprites'` and `'count'` in the engine's uniforms, and call `spriteCell(cell, light, glyph, fg, bg)` once per cell. It returns true when a sprite covered the cell.
+- `new GlyphSprites(engine, atlas, { max })` packs the atlas into texture unit 6 and keeps sprites in unit 7.
+- Each frame: `clear()`, then `add({ x, y, art, flip, flash, lit, shade, tint, bar })` (screen cells, top-left, topmost first) or `add({ x, y, char, colour })` for single letters, then `upload()`, which returns the count for `u_count`.
+- `tint` colours team pixels (`GlyphArt.team(level)`), so one drawing serves both sides. `bar: { fill, colour }` draws a health bar on the row above the sprite.
+- `size(name)` gives a frame's width and height in cells, for placing art on a body.
+
+## Letter size
+
+Every game draws at 4x6 CSS pixel cells, the smallest size at which a letter still reads on a high-density screen. Detail comes from more letters per tile, not bigger letters: a Burrow tile is 6x4 letters, a Ricochet tile 8x5, a Lockwork tile 12x8 and an Irongrid square 18x11. Fixed boards shrink their cells further only when the board would not otherwise fit.
+
 ## `GlyphArt` API (`engine/glyph-art.js`)
 
 Procedural pixel-art helper that packs small sprites into a single `RGBA8UI` texture atlas where each texel becomes a shaded character cell in the scene shader.
@@ -71,6 +85,7 @@ Procedural pixel-art helper that packs small sprites into a single `RGBA8UI` tex
 - `GlyphArt.hex('#rrggbb')`: Converts a hex string into `[r, g, b]` floats in `0..1`.
 - `GlyphArt.SHADER`: GLSL source for `atlasGlyph(texel, px, py)`, which picks the shading letter for an atlas texel. Include it in a scene shader that samples an atlas.
 - `GlyphArt.glow(colour)`: Marks a colour as self-lit (stored with alpha `200` in the atlas).
+- `GlyphArt.team(level)`: A team pixel of the given brightness (alpha `150`); `GlyphSprites` takes its hue from the sprite's tint.
 - `new GlyphArt.Atlas()`:
   - `.add(name, canvas)`: Registers a named sprite frame.
   - `.index(name)`: Returns the integer slot index for shader lookup.
