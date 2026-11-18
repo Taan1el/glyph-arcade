@@ -148,8 +148,9 @@ const { pathToFileURL } = require('node:url');
       return { x: ((x + 0.5) * 3 - app.cam.x) * size[0], y: ((y + 0.5) * 2 - app.cam.y) * size[1] };
     });
     await page.mouse.move(ground.x, ground.y);
+    // Hold until the dirt arrives: a slow machine simulates less game time per real second.
     await page.mouse.down();
-    await page.waitForTimeout(900);
+    await page.waitForFunction(() => (window.burrow.state.items.dirt || 0) > 0, null, { timeout: 5000 }).catch(() => {});
     await page.mouse.up();
     await page.keyboard.press('KeyC');
     await page.waitForTimeout(100);

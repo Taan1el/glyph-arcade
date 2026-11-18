@@ -198,7 +198,9 @@
       const gl=this.gl;let value=this.extraTextures.get(name);
       if(!value){value=texture(gl);value.name=name;this.extraTextures.set(name,value);this._extraList.push(value);}
       gl.bindTexture(gl.TEXTURE_2D,value);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
-      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8UI,width,height,0,gl.RGBA_INTEGER,gl.UNSIGNED_BYTE,data);
+      // Per-frame uploads keep their size, so refill the texture instead of reallocating it.
+      if(value.width===width&&value.height===height)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,width,height,gl.RGBA_INTEGER,gl.UNSIGNED_BYTE,data);
+      else{gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8UI,width,height,0,gl.RGBA_INTEGER,gl.UNSIGNED_BYTE,data);value.width=width;value.height=height;}
       value.unitIndex=unitIndex;
     }
     resize(width,height,cellSize=this.cellSize){
