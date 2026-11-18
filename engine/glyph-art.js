@@ -9,7 +9,7 @@
 
   class Canvas {
     constructor(width,height){this.width=width;this.height=height;this.pixels=new Array(width*height).fill(null);}
-    set(x,y,colour){x=Math.round(x);y=Math.round(y);if(x>=0&&y>=0&&x<this.width&&y<this.height)this.pixels[y*this.width+x]=colour;}
+    set(x,y,colour){x=Math.round(x);y=Math.round(y);if(x>=0&&y>=0&&x<this.width&&y<this.height)this.pixels[y*this.width+x]=colour;return this;}
     get(x,y){return x>=0&&y>=0&&x<this.width&&y<this.height?this.pixels[y*this.width+x]:null;}
     rect(x,y,w,h,colour){for(let j=0;j<h;j++)for(let i=0;i<w;i++)this.set(x+i,y+j,colour);return this;}
     ellipse(cx,cy,rx,ry,colour){for(let y=Math.floor(cy-ry);y<=Math.ceil(cy+ry);y++)for(let x=Math.floor(cx-rx);x<=Math.ceil(cx+rx);x++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1.0)this.set(x,y,colour);}return this;}

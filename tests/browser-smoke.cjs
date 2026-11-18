@@ -145,7 +145,8 @@ const { pathToFileURL } = require('node:url');
     const ground = await page.evaluate(() => {
       const app = window.burrow, p = app.state.player, size = app.view.engine.cellSize;
       const x = Math.floor(p.x + 2), y = Math.floor(p.y + p.h);
-      return { x: ((x + 0.5) * 3 - app.cam.x) * size[0], y: ((y + 0.5) * 2 - app.cam.y) * size[1] };
+      const { TILE_W, TILE_H } = window.BurrowView;
+      return { x: ((x + 0.5) * TILE_W - app.cam.x) * size[0], y: ((y + 0.5) * TILE_H - app.cam.y) * size[1] };
     });
     await page.mouse.move(ground.x, ground.y);
     // Hold until the dirt arrives: a slow machine simulates less game time per real second.

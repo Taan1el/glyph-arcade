@@ -243,7 +243,8 @@
     resize() {
       const narrow = global.innerWidth < 700;
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
-      this.view.resize(global.innerWidth, global.innerHeight, this.quality.cell(narrow ? [7, 10] : [8, 12]));
+      // The smallest letters that still read as letters on a high-density screen.
+      this.view.resize(global.innerWidth, global.innerHeight, this.quality.cell(narrow ? [4, 6] : [4, 6]));
     }
 
     show(mode) {
@@ -503,30 +504,36 @@
       };
     }
     collectSprites(state, cam) {
-      const sprites = [], toCell = (x, y) => ({ x: Math.round(x * TILE_W) - cam.x, y: Math.round(y * TILE_H) - cam.y });
-      const onScreen = (s, w, h) => s.x + w >= 0 && s.y + h >= 0 && s.x < this.view.columns && s.y < this.view.rows;
-      const add = (x, y, name, facing, flash, w, h, lit) => {
-        const at = toCell(x, y);
-        if (onScreen(at, w, h)) sprites.push({ x: at.x, y: at.y, frame: facing < 0 ? name + '.left' : name, flash, lit });
+      const sprites = [], view = this.view, toCell = (x, y) => ({ x: Math.round(x * TILE_W) - cam.x, y: Math.round(y * TILE_H) - cam.y });
+      const onScreen = (s, w, h) => s.x + w >= 0 && s.y + h >= 0 && s.x < view.columns && s.y < view.rows;
+      // Art stands on the bottom-centre of the body it belongs to, or centres on it.
+      const place = (body, art, facing, flash, lit, centred) => {
+        const { w, h } = view.size(art);
+        const x = Math.round((body.x + body.w / 2) * TILE_W - w / 2) - cam.x;
+        const y = (centred ? Math.round((body.y + body.h / 2) * TILE_H - h / 2) : Math.round((body.y + body.h) * TILE_H) - h) - cam.y;
+        return onScreen({ x, y }, w, h) ? { x, y, art, flip: facing < 0, flash, lit } : null;
       };
+      const add = (...args) => { const s = place(...args); if (s) sprites.push(s); };
       if (this.mode !== 'title') {
         const p = state.player, moving = Math.abs(p.vx) > 0.5, step = Math.floor(p.anim * 0.9) % 2;
         const frame = p.climbing ? 'climb' : !p.grounded ? 'jump' : moving ? (step ? 'walkA' : 'walkB') : 'idle';
         const blink = p.hurtTimer > 0 && Math.floor(this.time * 18) % 2 === 0;
-        if (!blink) add(p.x - 0.05, p.y - 0.15, frame, p.facing, false, 3, 4);
+        if (!blink) add(p, frame, p.facing, false);
         if (p.swing > 0) {
-          const at = toCell(p.x + (p.facing > 0 ? p.w + 0.05 : -1.05), p.y - 0.2);
-          sprites.unshift({ x: at.x, y: at.y, frame: p.facing > 0 ? 'sword' : 'sword.left', lit: true });
+          const blade = place({ x: p.facing > 0 ? p.x + p.w - 0.1 : p.x - 0.9, y: p.y + 0.1, w: 1, h: 0.9 }, 'sword', p.facing, false, true);
+          if (blade) sprites.unshift(blade);
         }
       }
       for (const c of state.creatures) {
         const step = Math.floor(c.anim * 5) % 2, name = c.kind === 'slime' ? (c.grounded ? 'slime' : 'slimeHop') : step ? c.kind : c.kind + 'B';
-        add(c.x, c.y, name, c.facing, c.flash > 0.3, 5, 4);
+        add(c, name, c.facing, c.flash > 0.3, false, c.kind === 'bat');
       }
       if (state.boss) {
         // Earlier sprites draw on top, so the head (the weak point) goes first.
+        const pulse = Math.floor(this.time * 3) % 2 === 1;
         for (const [i, s] of state.boss.segments.entries()) {
-          add(s.x - 1.15, s.y - 1.2, i === 0 ? 'mawHead' : 'mawBody', 1, state.boss.flash > 0.3, 7, 5, true);
+          const art = i === 0 ? (state.boss.lunge > 0 ? 'mawHeadOpen' : 'mawHead') : pulse === (i % 2 === 0) ? 'mawBodyB' : 'mawBody';
+          add({ x: s.x, y: s.y, w: 0, h: 0 }, art, 1, state.boss.flash > 0.3, true, true);
         }
       }
       for (const shot of state.shots) {
@@ -600,7 +607,7 @@
         if (state.mining) crack = { x: state.mining.x, y: state.mining.y, stage: 1 + Math.floor(state.mining.progress / state.mining.time * 4) };
         if (state.mining && Math.floor(this.time * 8) !== this.mineBeat) { this.mineBeat = Math.floor(this.time * 8); this.sound.play('mine'); }
       }
-      const glowAt = playing ? [(state.player.x + state.player.w / 2) * TILE_W, (state.player.y + state.player.h / 2) * TILE_H] : [-999, -999];
+      const glowAt = playing ? [state.player.x + state.player.w / 2, state.player.y + state.player.h / 2] : [-999, -999];
       try {
         this.view.draw({
           state, cam, cursor, crack, day, dusk, time: this.reducedMotion ? 0 : this.time, tint: this.tint, dissolve: 0,
