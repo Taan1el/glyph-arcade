@@ -112,6 +112,7 @@
         if (event.code === 'Escape' || event.code === 'KeyP') {
           event.preventDefault();
           if (this.mode === 'vaults') this.show('play');
+          else if (this.mode === 'help') this.show(this.state && this.state.status === 'play' && this.lastMode !== 'title' ? 'pause' : 'title');
           else if (this.mode === 'play') this.show('pause');
           else if (this.mode === 'pause') this.show('play');
           return;
@@ -193,8 +194,9 @@
       this.el['vault-grid'].addEventListener('click', event => {
         const btn = event.target.closest('button[data-vault]');
         if (!btn) return;
-        this.act({ selectVault: Number(btn.dataset.vault) });
+        // act() only runs in play mode, so leave the picker before switching.
         this.show('play');
+        this.act({ selectVault: Number(btn.dataset.vault) });
       });
 
       const showMute = () => {
@@ -240,19 +242,43 @@
 
     resize() {
       const w = global.innerWidth, h = global.innerHeight;
-      const base = w < 720 ? (w < 420 ? [5, 8] : [6, 9]) : [10, 14];
+      // Narrow windows get the on-screen pads even with a mouse.
+      if (w < 560 && !document.body.classList.contains('touch')) { this.enableTouch(); return; }
+      // Size cells so the whole board fits the space the HUD leaves free, and centre it there.
+      const cols = L.WIDTH * TILE_W, rows = L.HEIGHT * TILE_H, area = this.boardArea(w, h, cols, rows);
+      const cellH = Math.max(7, Math.min(22, Math.floor(Math.min(area.h / rows, area.w / cols * 1.4))));
+      const cellW = Math.max(5, Math.floor(cellH / 1.4));
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
-      this.view.resize(w, h, this.quality.cell(base));
+      this.view.resize(w, h, [cellW, cellH]);
+      this.view.offset = {
+        x: Math.round((area.x + (area.w - cols * cellW) / 2) / cellW),
+        y: Math.round((area.y + (area.h - rows * cellH) / 2) / cellH)
+      };
+    }
+
+    // The larger of two spaces: beside the status panel, or below it.
+    boardArea(w, h, cols, rows) {
+      if (this.el.hud.hidden) return { x: 0, y: 0, w, h };
+      const stats = this.el.stats.getBoundingClientRect(), goal = this.el.objective.getBoundingClientRect();
+      const pads = document.body.classList.contains('touch') ? [...this.el.touch.querySelectorAll('.pad, .side')].map(n => n.getBoundingClientRect()).filter(r => r.height) : [];
+      const bottom = Math.min(h - 40, ...pads.map(r => r.top - 6));
+      const below = Math.max(stats.bottom, goal.bottom) + 6;
+      const side = { x: stats.right + 8, y: goal.bottom + 6, w: w - stats.right - 16, h: bottom - goal.bottom - 6 };
+      const top = { x: 8, y: below, w: w - 16, h: bottom - below };
+      const fit = a => Math.min(a.h / rows, a.w / cols * 1.4);
+      return fit(side) >= fit(top) ? side : top;
     }
 
     show(mode) {
       const was = this.mode;
+      if (mode === 'help') this.lastMode = was;
       this.mode = mode;
       for (const name of ['title', 'pause', 'help', 'end', 'vaults']) this.el[name].hidden = mode !== name;
       this.el.hud.hidden = mode === 'title' || mode === 'end';
       document.body.dataset.mode = mode;
       if (mode === 'title') this.refreshTitle();
       if (mode === 'vaults') this.renderVaults();
+      if (mode === 'play' || was === 'play' || was === 'title') this.resize();
       if (was === 'play' && mode === 'pause') this.save();
       if (mode !== 'play') this.el[mode]?.querySelector('button')?.focus();
     }
@@ -268,9 +294,9 @@
         const cog = best !== null && best <= par;
         btn.className = 'vbtn' + (cog ? ' cog' : s.cleared[i] ? ' cleared' : '');
         const strong = document.createElement('strong');
-        strong.textContent = `${i + 1}. ${v.name}${cog ? ' *' : ''}`;
+        strong.textContent = `${i + 1}. ${v.name}`;
         const small = document.createElement('small');
-        small.textContent = best !== null ? `${v.chapter} · ${best}/${par}` : `${v.chapter} · Par ${par}`;
+        small.textContent = best !== null ? `${best}/${par} steps${cog ? ' · Gold Cog' : ''}` : `${v.chapter} · Par ${par}`;
         btn.append(strong, small);
         grid.append(btn);
       });
@@ -346,6 +372,14 @@
 
     act(input) {
       if (!this.state || this.mode !== 'play') return;
+      // A held key must not spill into the next vault the moment one is cleared.
+      if (performance.now() < (this.calmUntil || 0) && (input.moveX || input.moveY || input.action)) return;
+      // The hint searches the whole vault, which can take a moment: say so first.
+      if (input.hint && !input.now) {
+        this.toast('Working out a hint...');
+        setTimeout(() => this.act({ hint: true, now: true }), 40);
+        return;
+      }
       const events = L.step(this.state, input);
       for (const e of events) {
         if (e.type === 'step') this.sound.play('step');
@@ -359,6 +393,7 @@
         else if (e.type === 'unlock') { this.sound.play('unlock'); this.flash(0.3, 0.9, 0.4, 0.14); }
         else if (e.type === 'hint' && e.hint) this.toast(e.hint.text);
         else if (e.type === 'vaultClear') {
+          this.calmUntil = performance.now() + 450;
           this.sound.play('clear');
           this.flash(1.0, 0.85, 0.3, 0.2);
           this.toast(`Vault ${e.index + 1} cleared in ${e.steps}/${e.par} steps${e.cog ? ' · Gold Cog *!' : '!'}`);

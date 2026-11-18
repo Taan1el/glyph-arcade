@@ -185,6 +185,7 @@
     }
 
     camera() {
+      if (this.offset) return { x: -this.offset.x, y: -this.offset.y };
       const bw = L.WIDTH * TILE_W, bh = L.HEIGHT * TILE_H;
       return {
         x: Math.round((bw - this.columns) / 2),
