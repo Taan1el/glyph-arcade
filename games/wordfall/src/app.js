@@ -159,7 +159,7 @@
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
       const touch = document.body.classList.contains('touch');
       const reserved = touch ? Math.max(80, Math.min(130, global.innerHeight * 0.2 + 10)) : 0;
-      this.view.resize(global.innerWidth, global.innerHeight, this.quality.cell(coarse ? [7, 10] : [8, 12]), reserved);
+      this.view.resize(global.innerWidth, global.innerHeight, this.quality.cell([4, 6]), reserved);
     }
 
     show(mode) {

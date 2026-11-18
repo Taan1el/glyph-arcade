@@ -95,7 +95,7 @@
       global.addEventListener('touchstart',()=>this.enableTouch(),{passive:true,once:true});
     }
     enableTouch(){document.body.classList.add('touch');this.el.touch.hidden=false;}
-    resize(){const coarse=global.innerWidth<700;this.view.engine.maxDpr=this.quality.setting.maxDpr;this.view.resize(global.innerWidth,global.innerHeight,this.quality.cell(coarse?[7,10]:[8,12]));}
+    resize(){const coarse=global.innerWidth<700;this.view.engine.maxDpr=this.quality.setting.maxDpr;this.view.resize(global.innerWidth,global.innerHeight,this.quality.cell([4,6]));}
     show(mode){
       this.mode=mode;this.touchAction=null;for(const name of ['title','help','end'])this.el[name].hidden=mode!==name;
       this.el.hud.hidden=mode!=='play'&&mode!=='help';document.body.dataset.mode=mode;

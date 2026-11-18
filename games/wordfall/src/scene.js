@@ -51,7 +51,11 @@
       if (dx < 0 || dy < 0 || dx >= 5 * scale || dy >= 7 * scale) continue;
       if (!glyphBit(sprite.r, dx / scale, dy / scale)) continue;
       vec3 colour = sprite.a == 1u ? vec3(1.0, 0.8, 0.3) : vec3(0.45, 0.72, 0.85);
-      writeCell(sprite.r, 4u, 3u, 1.0, colour, ground3);
+      // Lit from above, with a darker rim on each stroke, so the big letters look solid.
+      float shade = 1.2 - 0.45 * float(dy) / float(7 * scale);
+      bool rim = !glyphBit(sprite.r, (dx + 1) / scale, dy / scale) || !glyphBit(sprite.r, dx / scale, (dy + 1) / scale);
+      colour *= rim && scale > 1 ? shade * 0.7 : shade;
+      writeCell(sprite.r, 4u, 3u, 1.0, colour, colour * 0.42);
       return;
     }
   }`;

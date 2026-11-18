@@ -388,7 +388,7 @@
     resize() {
       const coarse = global.innerWidth < 700;
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
-      this.view.resize(global.innerWidth, global.innerHeight, this.quality.cell(coarse ? [7, 10] : [8, 12]));
+      this.view.resize(global.innerWidth, global.innerHeight, this.quality.cell([4, 6]));
     }
 
     show(mode) {
