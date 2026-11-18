@@ -16,9 +16,9 @@
     line(x0,y0,x1,y1,colour,width=1){const steps=Math.max(Math.abs(x1-x0),Math.abs(y1-y0))*2+1;for(let i=0;i<=steps;i++){const t=i/steps,x=x0+(x1-x0)*t,y=y0+(y1-y0)*t;for(let w=0;w<width;w++)this.set(x+w*(Math.abs(y1-y0)>Math.abs(x1-x0)?1:0),y+w*(Math.abs(y1-y0)>Math.abs(x1-x0)?0:1),colour);}return this;}
     // Shade: lighten top-left facing edges, darken bottom-right, then a dark outline.
     finish({outline=[.06,.05,.05],shade=true}={}){
-      if(shade){const copy=this.pixels.slice();for(let y=0;y<this.height;y++)for(let x=0;x<this.width;x++){const c=copy[y*this.width+x];if(!c||c.glow)continue;
+      if(shade){const copy=this.pixels.slice();for(let y=0;y<this.height;y++)for(let x=0;x<this.width;x++){const c=copy[y*this.width+x];if(!c||c.glow)continue;const keep={glow:c.glow,team:c.team};
         const lit=(y===0||!copy[(y-1)*this.width+x])||(x===0||!copy[y*this.width+x-1]),dark=(y===this.height-1||!copy[(y+1)*this.width+x])||(x===this.width-1||!copy[y*this.width+x+1]);
-        if(lit&&!dark)this.pixels[y*this.width+x]=Object.assign(c.map(v=>Math.min(1,v*1.28+.05)),{glow:c.glow});else if(dark&&!lit)this.pixels[y*this.width+x]=Object.assign(c.map(v=>v*.62),{glow:c.glow});}}
+        if(lit&&!dark)this.pixels[y*this.width+x]=Object.assign(c.map(v=>Math.min(1,v*1.28+.05)),keep);else if(dark&&!lit)this.pixels[y*this.width+x]=Object.assign(c.map(v=>v*.62),keep);}}
       if(outline){const copy=this.pixels.slice();for(let y=0;y<this.height;y++)for(let x=0;x<this.width;x++){if(copy[y*this.width+x])continue;
         const near=[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const c=x+dx>=0&&x+dx<this.width&&y+dy>=0&&y+dy<this.height?copy[(y+dy)*this.width+x+dx]:null;return c&&!c.glow;});
         if(near)this.pixels[y*this.width+x]=outline;}}
@@ -27,6 +27,8 @@
     mirrorRows(from,to){for(let y=from;y<to;y++){const row=this.pixels.slice(y*this.width,(y+1)*this.width).reverse();for(let x=0;x<this.width;x++)this.pixels[y*this.width+x]=row[x];}return this;}
   }
   const glow=colour=>Object.assign(colour.slice(),{glow:true});
+  // A team pixel: only its brightness is stored; the sprite's tint gives the hue.
+  const team=(level=.75)=>Object.assign([level,level,level],{team:true});
 
   // Packs frames into an RGBA atlas: rgb colour, alpha 255 solid / 200 self-lit / 0 empty.
   class Atlas {
@@ -45,7 +47,7 @@
         for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){const c=canvas.get(x,y);if(!c)continue;
           // Texture rows run bottom-up in the shader; flip so art reads upright.
           const tx=ox+x,ty=Math.floor(index/columns)*SLOT+(SLOT-1-(oy-Math.floor(index/columns)*SLOT+y)),i=(ty*width+tx)*4;
-          data[i]=Math.round(c[0]*255);data[i+1]=Math.round(c[1]*255);data[i+2]=Math.round(c[2]*255);data[i+3]=c.glow?200:255;}
+          data[i]=Math.round(c[0]*255);data[i+1]=Math.round(c[1]*255);data[i+2]=Math.round(c[2]*255);data[i+3]=c.glow?200:c.team?150:255;}
       });
       return{width,height:rows*SLOT,data,columns};
     }
@@ -64,5 +66,5 @@
     return 77u;            // 'M' highlight
   }`;
 
-  global.GlyphArt={SLOT,SHADER,Canvas,Atlas,hex,glow};
+  global.GlyphArt={SLOT,SHADER,Canvas,Atlas,hex,glow,team};
 })(typeof window!=='undefined'?window:globalThis);

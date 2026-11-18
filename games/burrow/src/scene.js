@@ -9,12 +9,9 @@
   const SCENE = `
   uniform usampler2D u_world;
   uniform usampler2D u_light;
-  uniform usampler2D u_art;
-  uniform usampler2D u_sprites;
   uniform ivec2 u_origin;
   uniform ivec2 u_window;
   uniform ivec2 u_cam;
-  uniform int u_count;
   uniform float u_day;
   uniform float u_dusk;
   uniform ivec3 u_cursor;
@@ -22,6 +19,7 @@
   uniform vec2 u_glow;
   uniform vec3 u_sun;
   ${global.GlyphArt.SHADER}
+  ${global.GlyphSprites.SHADER}
 
   const int TW=${TILE_W},TH=${TILE_H};
   uvec4 tileAt(ivec2 t){
@@ -238,51 +236,21 @@
     }
 
     // Sprites sit in screen cells. Earlier sprites draw on top.
-    for(int i=0;i<u_count;i++){
-      uvec4 a=texelFetch(u_sprites,ivec2(i,0),0),c=texelFetch(u_sprites,ivec2(i,2),0);
-      ivec2 pos=ivec2(int(a.r)+int(a.g)*256-2048,int(a.b)+int(a.a)*256-2048);
-      ivec2 rel=cell-pos;
-      int w=int(c.r),h=int(c.g),fl=int(c.b);
-      if(rel.x<0||rel.y<0||rel.x>=w||rel.y>=h)continue;
-      if((fl&8)!=0){
-        uvec4 d=texelFetch(u_sprites,ivec2(i,3),0);
-        glyph=d.r;fg=vec3(d.gba)/255.0;
-        break;
-      }
-      uvec4 b=texelFetch(u_sprites,ivec2(i,1),0);
-      int ax=int(b.r)+int(b.g)*256,ay=int(b.b)+int(b.a)*256;
-      int px=(fl&4)!=0?w-1-rel.x:rel.x;
-      uvec4 texel=texelFetch(u_art,ivec2(ax+px,ay-rel.y),0);
-      if(texel.a==0u)continue;
-      vec3 colour=vec3(texel.rgb)/255.0;
-      bool selfLit=texel.a==200u||(fl&2)!=0;
-      vec3 k=selfLit?vec3(1.0):max(light*1.15,vec3(.24));
-      glyph=atlasGlyph(texel,px,rel.y);
-      fg=(fl&1)!=0?vec3(1.0):colour*k*1.2;
-      bg=(fl&1)!=0?vec3(.8):colour*k*.6;
-      break;
-    }
+    spriteCell(cell,light,glyph,fg,bg);
     writeCell(glyph,material,flags,1.0,fg,bg);
   }`;
 
   class BurrowView {
     constructor(canvas) {
       this.engine = new global.GlyphEngine(canvas, { sceneSource: SCENE, uniforms: ['world', 'light', 'art', 'sprites', 'origin', 'window', 'cam', 'count', 'day', 'dusk', 'cursor', 'crack', 'glow', 'sun'], far: 2 });
-      this.atlas = global.BurrowArt.build();
-      const packed = this.atlas.pack();
-      this.engine.setTexture('art', 6, packed.width, packed.height, packed.data);
-      this.spriteData = new Uint8Array(MAX_SPRITES * 4 * 4);
-      this.engine.setTexture('sprites', 7, MAX_SPRITES, 4, this.spriteData);
+      this.sprites = new global.GlyphSprites(this.engine, global.BurrowArt.build(), { max: MAX_SPRITES });
       this.columns = 1;
       this.rows = 1;
       this.lightKey = '';
       this.lightAge = 0;
     }
     // Width and height of an art frame, in cells.
-    size(name) {
-      const { canvas } = this.atlas.frames[this.atlas.index(name)];
-      return { w: canvas.width, h: canvas.height };
-    }
+    size(name) { return this.sprites.size(name); }
     resize(width, height, cellSize) {
       this.engine.resize(width, height, cellSize);
       this.columns = this.engine.columns;
@@ -327,22 +295,9 @@
     }
     // sprites: {x, y (screen cells), art, flip, flash, lit} or {x, y, char, colour}
     draw({ state, cam, sprites, cursor, crack, glow, sun, day, dusk, time, tint, dissolve }) {
-      const data = this.spriteData, count = Math.min(MAX_SPRITES, sprites.length), SLOT = global.GlyphArt.SLOT;
-      const put = (i, row, a, b, c, d) => { const at = (row * MAX_SPRITES + i) * 4; data[at] = a; data[at + 1] = b; data[at + 2] = c; data[at + 3] = d; };
-      for (let i = 0; i < count; i++) {
-        const s = sprites[i], x = s.x + 2048, y = s.y + 2048;
-        put(i, 0, x & 255, x >> 8, y & 255, y >> 8);
-        if (s.art) {
-          const index = this.atlas.index(s.art), { w, h } = this.size(s.art);
-          const ax = (index % 16) * SLOT + Math.floor((SLOT - w) / 2), ay = Math.floor(index / 16) * SLOT + h - 1;
-          put(i, 1, ax & 255, ax >> 8, ay & 255, ay >> 8);
-          put(i, 2, w, h, (s.flash ? 1 : 0) | (s.lit ? 2 : 0) | (s.flip ? 4 : 0), 0);
-        } else {
-          put(i, 2, 1, 1, 8, 0);
-          put(i, 3, s.char.charCodeAt(0), s.colour[0], s.colour[1], s.colour[2]);
-        }
-      }
-      this.engine.setTexture('sprites', 7, MAX_SPRITES, 4, data);
+      this.sprites.clear();
+      for (const sprite of sprites) if (!this.sprites.add(sprite)) break;
+      const count = this.sprites.upload();
       this.upload(state, cam);
       this.engine.render((gl, u) => {
         gl.uniform2i(u.origin, this.origin[0], this.origin[1]);
