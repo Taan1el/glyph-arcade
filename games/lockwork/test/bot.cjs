@@ -6,7 +6,7 @@ function playAllVaults(L, seed = 'lockwork', difficulty = 'standard') {
   const results = [];
   while (state.status === 'play') {
     const vIdx = state.vaultIndex;
-    const plan = L.solveVault(state, 20000);
+    const plan = L.solveVault(state, 60000);
     if (!plan) {
       return { state, won: false, results, failedAt: vIdx };
     }

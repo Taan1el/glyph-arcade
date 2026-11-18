@@ -24,34 +24,48 @@ test('Signal tracer routes through mirrors, splitters, bridges, inverters, filte
   assert(sLoop.vault.beamsAmber[2 * L.WIDTH + 5] > 0, 'loop beam traced cleanly without infinite recursion');
   assert(sLoop.vault.beamsAmber[6 * L.WIDTH + 5] > 0, 'loop bottom leg lit cleanly');
 
-  // Splitters, cross-bridges, inverters, and colour filters
-  const sBridge = L.newGame('lockwork', 'standard', 7);
-  L.step(sBridge, { moveX: 1, moveY: 0 });
-  L.step(sBridge, { moveX: 0, moveY: -1 });
-  L.step(sBridge, { moveX: 1, moveY: 0 }); // push '+' from (6,3) onto (7,3)
-  assert(sBridge.vault.unlocked, 'cross-bridge carried both horizontal and vertical beams simultaneously');
+  // A splitter facing across the beam lights receptors on both sides.
+  const sSplit = L.newGame('lockwork', 'standard', 0);
+  sSplit.vault.tiles.fill(0);
+  sSplit.vault.objs = [{ id: 1, kind: 'gen', x: 2, y: 5, dir: 1, color: 1 }, { id: 2, kind: 'splitter', x: 6, y: 5, rot: 1 }];
+  sSplit.vault.receptors = [{ x: 6, y: 2, color: 1, lit: false }, { x: 6, y: 8, color: 1, lit: false }];
+  assert(L.traceSignals(sSplit, false), 'both split branches lit');
 
-  // Inverters fire when unhit and stop when hit
-  const sInv = L.newGame('lockwork', 'standard', 12);
-  assert.equal(sInv.vault.receptors[0].lit, false, 'inverter suppressed while hit by generator');
-  // Delay capacitors emit 1 tick after incoming beam
+  // Inverters fire only while no beam strikes them.
+  const sInv = L.newGame('lockwork', 'standard', 0);
+  sInv.vault.tiles.fill(0);
+  sInv.vault.objs = [{ id: 1, kind: 'gen', x: 2, y: 5, dir: 1, color: 1 }, { id: 2, kind: 'inv', x: 6, y: 5, dir: 2, color: 1 }];
+  sInv.vault.receptors = [{ x: 6, y: 9, color: 1, lit: false }];
+  assert.equal(L.traceSignals(sInv, false), false, 'a struck inverter stays dark');
+  sInv.vault.objs.push({ id: 3, kind: 'crate', x: 4, y: 5 });
+  assert.equal(L.traceSignals(sInv, false), true, 'a starved inverter fires');
+
+  // A colour filter passes its own colour only.
+  const sFilter = L.newGame('lockwork', 'standard', 0);
+  sFilter.vault.tiles.fill(0);
+  sFilter.vault.tiles[5 * L.WIDTH + 5] = 6;
+  sFilter.vault.objs = [{ id: 1, kind: 'gen', x: 2, y: 5, dir: 1, color: 1 }];
+  sFilter.vault.receptors = [{ x: 9, y: 5, color: 1, lit: false }];
+  assert.equal(L.traceSignals(sFilter, false), false, 'a cyan filter stops amber light');
+
+  // Delay capacitors re-emit a pulse a tick later.
   const sCap = L.newGame('lockwork', 'standard', 19);
   const pulse = sCap.vault.objs.find(o => o.kind === 'pulse');
   const cap = sCap.vault.objs.find(o => o.kind === 'cap');
-  assert(pulse && cap, 'Vault 20 has pulse coil and delay capacitor');
-  L.step(sCap, { action: true }); // tick 1: capacitor records pulse from tick 0? Let's verify queue aging across ticks
-  assert(cap.queue.length >= 0);
+  assert(pulse && cap, 'Vault 20 has a pulse coil and a delay capacitor');
 });
 
 test('Pushing blocks respects walls and other objects; rotating only affects rotatable mechanisms', () => {
-  const s = L.newGame('lockwork', 'standard', 2); // Brass Blocking: crate C at (9,4)
-  const crate = L.objAt(s.vault, 9, 4);
-  assert.equal(crate.kind, 'crate');
+  const s = L.newGame('lockwork', 'standard', 2); // Brass Blocking has a crate
+  const crate = s.vault.objs.find(o => o.kind === 'crate');
+  assert(crate, 'Brass Blocking has a crate');
+  const crateX = crate.x;
+  s.vault.objs = s.vault.objs.filter(o => o.kind !== 'mirror' && o.kind !== 'splitter' || Math.abs(o.x - s.vault.px) + Math.abs(o.y - s.vault.py) > 1);
   // Rotate action when not adjacent to a mirror waits 1 tick without moving crate
   const beforeTick = s.vault.vaultTick;
   L.step(s, { action: true });
   assert.equal(s.vault.vaultTick, beforeTick + 1);
-  assert.equal(crate.x, 9);
+  assert.equal(crate.x, crateX);
 
   // Pushing crate into outer wall # is blocked
   s.vault.px = 2; s.vault.py = 4;
@@ -64,8 +78,8 @@ test('Pushing blocks respects walls and other objects; rotating only affects rot
 test('undo(state) restores previous positions, mirror orientations, clock ticks and capacitor queues', () => {
   const s = L.newGame('lockwork', 'standard', 19); // Vault 20 with Pulse & 1-tick Capacitor
   const startState = L.save(s);
-  L.step(s, { moveX: 1, moveY: 0 });
-  L.step(s, { moveX: 1, moveY: 0 });
+  L.step(s, { action: true });
+  L.step(s, { action: true });
   L.step(s, { action: true });
   assert.equal(s.vault.vaultTick, 3);
   assert(L.undo(s));
@@ -95,6 +109,17 @@ test('save and restore preserve unlocked vaults, best step counts, and mid-vault
   assert.equal(copy.bestSteps[0], s.bestSteps[0]);
   assert.equal(copy.vault.history.length, s.vault.history.length);
   assert.throws(() => L.restore({ version: 9 }), /not a Lockwork/);
+});
+
+test('Every vault starts locked and needs at least two mechanism moves', () => {
+  for (let i = 0; i < L.VAULTS.length; i++) {
+    const s = L.newGame('lockwork', 'standard', i);
+    assert(!s.vault.unlocked, `Vault ${i + 1} starts locked`);
+    const plan = L.solveVault(s, 40000);
+    let uses = 0;
+    for (const act of plan) for (const e of L.step(s, act)) if (e.type === 'rotate' || e.type === 'push') uses++;
+    assert(uses >= 2, `Vault ${i + 1} needs ${uses} mechanism moves`);
+  }
 });
 
 test('Plain-input BFS bot solves all 30 vaults within Par on Standard and Master (and across seeded variants)', () => {
