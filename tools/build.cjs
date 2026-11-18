@@ -20,7 +20,7 @@ const GAMES=[
   {id:'lockwork',title:'Lockwork',tagline:'Slide brass conduits, rotate mirrors and time signal pulses across 30 clockwork vaults.',
    parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/lockwork/src/rules.js','games/lockwork/src/scene.js','games/lockwork/src/app.js'],shell:'games/lockwork/src/shell.html'},
   {id:'irongrid',title:'Irongrid',tagline:'Command three steam-walkers, shove foes into hazards and defend the power grid across four sectors.',
-   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/irongrid/src/rules.js','games/irongrid/src/scene.js','games/irongrid/src/app.js'],shell:'games/irongrid/src/shell.html'}
+   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','engine/glyph-sprites.js','games/irongrid/src/art.js','games/irongrid/src/rules.js','games/irongrid/src/scene.js','games/irongrid/src/app.js'],shell:'games/irongrid/src/shell.html'}
 ];
 const EXTERNAL=[
   {id:'next-stop',title:'Next Stop',tagline:'A rural steam railway in coloured letters. Drive, deliver and explore a valley.',href:'https://taan1el.github.io/next-stop/'}

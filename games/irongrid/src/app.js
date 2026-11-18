@@ -297,10 +297,11 @@
       const availW = Math.max(200, w - 16);
       const availH = Math.max(140, h - topBand - botBand);
 
-      let cw = Math.max(4, Math.floor(availW / (R.BOARD_SIZE * TILE_W + 2)));
-      let ch = Math.max(6, Math.floor(availH / (R.BOARD_SIZE * TILE_H + 1)));
-      ch = Math.min(ch, Math.round(cw * 1.8));
-      cw = Math.min(cw, Math.max(4, Math.round(ch * 0.72)));
+      // Letters stay 4x6 where the board fits, and shrink on small, dense phone screens.
+      let cw = Math.max(2, Math.min(4, Math.floor(availW / (R.BOARD_SIZE * TILE_W + 2))));
+      let ch = Math.max(3, Math.min(6, Math.floor(availH / (R.BOARD_SIZE * TILE_H))));
+      ch = Math.min(ch, Math.round(cw * 1.5));
+      cw = Math.min(cw, Math.max(2, Math.round(ch * 0.67)));
       // Keep the entire 8x8 fixed board inside the viewport even when GlyphQuality lowers DPR
       const cell = [cw, ch];
       const shiftCells = Math.round((topBand - botBand) / cell[1]);
