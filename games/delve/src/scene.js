@@ -23,19 +23,20 @@
   uniform vec3 u_wallColour;
   uniform vec3 u_floorColour;
   uniform vec3 u_fogColour;
+  uniform float u_depth;
 
   ${global.GlyphArt.SHADER}
   uvec4 tile(ivec2 c){if(c.x<0||c.y<0||c.x>=u_size||c.y>=u_size)return uvec4(0u);return texelFetch(u_map,c,0);}
 
   vec3 light(vec3 p,vec3 n,vec3 base){
-    vec3 total=vec3(.06,.065,.085)*base;
+    vec3 total=vec3(.11,.115,.145)*base;
     vec3 toL=u_lantern.xyz-p;float d=length(toL);
-    total+=base*vec3(1.0,.82,.58)*u_lantern.w*max(.15,dot(n,toL/max(d,.01)))/(1.0+d*d*.22);
+    total+=base*vec3(1.0,.84,.60)*u_lantern.w*max(.20,dot(n,toL/max(d,.01)))/(1.0+d*d*.18);
     for(int i=0;i<${MAX_TORCHES};i++){
       if(i>=u_torchCount)break;
       vec3 toT=u_torches[i].xyz-p;float dt=length(toT);
       float flicker=.85+.15*sin(u_time*9.0+u_torches[i].w*7.0)*sin(u_time*5.3+u_torches[i].w*3.0);
-      total+=base*vec3(1.0,.55,.22)*1.6*flicker*max(.2,dot(n,toT/max(dt,.01)))/(1.0+dt*dt*.16);
+      total+=base*vec3(1.0,.55,.22)*1.65*flicker*max(.22,dot(n,toT/max(dt,.01)))/(1.0+dt*dt*.15);
     }
     return total;
   }
@@ -43,26 +44,67 @@
   // World-space size of one character cell at distance t on a surface.
   float footprint(float t,vec3 n,vec3 rd){return t*cellAngle()/max(.15,abs(dot(n,-rd)));}
 
-  uint wallGlyph(vec2 uv,float t,float fp,out float shade){
-    // Running-bond bricks .8 x .4, joints drawn as letters when resolvable.
-    float row=floor(uv.y/.4),u=uv.x/.8+mod(row,2.0)*.5;
-    vec2 local=vec2(fract(u),fract(uv.y/.4));
-    float brick=hash21(vec2(floor(u),row));shade=.82+.3*brick;
-    if(fp<.18){
-      bool hJoint=local.y<.12,vJoint=local.x<.08;
-      if(hJoint&&vJoint){shade*=.55;return 43u;}
-      if(hJoint){shade*=.6;return 45u;}
-      if(vJoint){shade*=.6;return 124u;}
+  uint wallGlyph(vec2 uv,float t,float fp,inout vec3 base,out float shade,out bool selfLit){
+    selfLit=false;
+    // Top stone cornice and floor plinth frame the running-bond masonry.
+    bool cornice=uv.y>${WALL_HEIGHT.toFixed(2)}-.28, plinth=uv.y<.26;
+    if(cornice){
+      vec2 cl=vec2(fract(uv.x*2.0),fract((uv.y-(${WALL_HEIGHT.toFixed(2)}-.28))/.28));
+      shade=cl.y>.75?1.25:cl.y<.18?.58:.95;
+      base*=vec3(.92,.90,.88);
+      if(cl.x<.08){shade*=.6;return 124u;}
+      return cl.y>.75?61u:cl.y<.18?95u:35u;
     }
-    float grain=hash21(floor(uv*vec2(5.0,4.0)/max(1.0,fp*4.0)));
-    return brick>.86?37u:grain>.6?35u:grain>.25?61u:58u;
+    if(plinth){
+      vec2 pl=vec2(fract(uv.x*1.5),uv.y/.26);
+      float block=hash21(vec2(floor(uv.x*1.5),7.0));
+      shade=pl.y>.82?1.22:pl.y<.14?.52:(.78+.22*block);
+      base*=vec3(.82,.80,.78);
+      if(pl.x<.07){shade*=.55;return 124u;}
+      return pl.y>.82?61u:(block>.6?35u:58u);
+    }
+    // Running-bond cut stone blocks (.75 x .36), lit upper lip and deep mortar recesses.
+    float row=floor(uv.y/.36),u=uv.x/.75+mod(row,2.0)*.5;
+    vec2 bid=vec2(floor(u),row),local=vec2(fract(u),fract(uv.y/.36));
+    float brick=hash21(bid);
+    shade=.78+.32*brick;
+    if(fp<.20){
+      bool hJoint=local.y<.11,vJoint=local.x<.08;
+      if(hJoint&&vJoint){shade*=.48;return 43u;}
+      if(hJoint){
+        shade*=.52;
+        if(u_depth>=3.5&&u_depth<4.5&&brick>.72){base=vec3(.95,.42,.14);shade=1.0;selfLit=true;return 37u;}
+        return 45u;
+      }
+      if(vJoint){shade*=.54;return 124u;}
+      if(local.y>.86){shade*=1.28;return 61u;}
+    }
+    if(u_depth>=1.5&&u_depth<2.5&&local.y<.30&&brick>.62)base=mix(base,vec3(.24,.56,.26),.55);
+    if(u_depth>=4.5&&brick>.84&&abs(local.x-.5)<.18&&abs(local.y-.5)<.20){base=vec3(.42,.68,1.0);selfLit=true;return 42u;}
+    float grain=hash21(floor(uv*vec2(7.0,6.0)/max(1.0,fp*5.0)));
+    return brick>.87?37u:grain>.66?35u:grain>.34?61u:grain>.15?58u:44u;
   }
-  uint floorGlyph(vec2 xz,uint kind,float fp,out float shade){
-    vec2 local=fract(xz);float stone=hash21(floor(xz)*1.7);shade=.8+.3*stone;
-    if(kind==4u){shade=.7+.35*fract(xz.y*3.0);return fract(xz.y*3.0)<.25?61u:62u;}
-    if(fp<.3&&(local.x<.06||local.y<.06)){shade*=.6;return local.x<.06&&local.y<.06?43u:local.x<.06?124u:45u;}
-    float grit=hash21(floor(xz*6.0/max(1.0,fp*6.0)));
-    return grit>.85?44u:grit>.7?39u:46u;
+  uint floorGlyph(vec2 xz,uint kind,float fp,inout vec3 base,out float shade,out bool selfLit){
+    selfLit=false;
+    vec2 cellId=floor(xz*1.5),local=fract(xz*1.5);
+    float stone=hash21(cellId*1.7);shade=.78+.32*stone;
+    if(kind==4u){
+      // Descending stone steps with lit stair nosing and recessed risers.
+      vec2 sl=fract(xz);
+      if(sl.x<.13||sl.x>.87){shade=.88;base*=vec3(.88,.84,.78);return 35u;}
+      float st=fract(xz.y*4.0);
+      if(st<.22){base=vec3(.92,.76,.28);shade=1.22;return 61u;}
+      shade=st<.45?.45:.82;base*=vec3(.95,.88,.72);
+      return st<.45?95u:46u;
+    }
+    if(fp<.34&&(local.x<.07||local.y<.07)){
+      shade*=.52;
+      if(u_depth>=1.5&&u_depth<2.5&&stone>.58)base=mix(base,vec3(.26,.54,.24),.5);
+      return local.x<.07&&local.y<.07?43u:local.x<.07?124u:45u;
+    }
+    if(fp<.34&&(local.x>.90||local.y>.90)){shade*=1.16;return 46u;}
+    float grit=hash21(floor(xz*8.0/max(1.0,fp*7.0)));
+    return grit>.90?44u:grit>.78?39u:grit>.60?46u:32u;
   }
 
   void main(){
@@ -86,23 +128,44 @@
     float tHit=min(tWall,tPlane);
     vec3 fg=vec3(0),bg=vec3(0);uint glyph=32u,material=0u,flags=0u;
     if(tHit<u_far){
-      vec3 p=u_eye+rd*tHit,n;vec3 base;float shade=1.0;
+      vec3 p=u_eye+rd*tHit,n;vec3 base;float shade=1.0;bool worldLit=false;
       if(tWall<tPlane){
         n=wallN;vec2 uv=vec2(abs(n.x)>.5?p.z:p.x,p.y);float fp=footprint(tHit,n,rd);
         if(wallKind==2u){
-          // Iron portcullis: bars and crossbands, raised by its open fraction.
-          material=3u;base=vec3(.42,.40,.38);float bar=fract(uv.x*5.0);shade=bar<.3?1.1:.65;
-          glyph=fract((uv.y-wallOpen*H)*2.5)<.18?61u:bar<.3?124u:35u;
-        }else{material=1u;base=u_wallColour;glyph=wallGlyph(uv,tHit,fp,shade);}
+          // Iron portcullis inside cut stone jambs and top lintel.
+          float lx=fract(uv.x);
+          if(lx<.12||lx>.88||uv.y>H-.26){
+            material=1u;base=u_wallColour*.88;shade=(lx<.12||lx>.88)?1.1:.78;
+            glyph=uv.y>H-.26?61u:124u;
+          }else{
+            material=3u;base=vec3(.46,.44,.42);float bar=fract(uv.x*6.0);
+            bool band=fract((uv.y-wallOpen*H)*2.2)<.16;
+            shade=band?1.18:bar<.28?1.08:.58;
+            glyph=band?((bar<.28)?43u:61u):bar<.28?124u:35u;
+          }
+        }else{material=1u;base=u_wallColour;glyph=wallGlyph(uv,tHit,fp,base,shade,worldLit);}
       }else if(rd.y<0.0){
         n=vec3(0,1,0);uint kind=tile(ivec2(floor(p.xz))).r;float fp=footprint(tHit,n,rd);
-        material=kind==4u?5u:2u;base=kind==4u?u_floorColour*1.25:u_floorColour;glyph=floorGlyph(p.xz,kind,fp,shade);
+        material=kind==4u?5u:2u;base=kind==4u?u_floorColour*1.25:u_floorColour;glyph=floorGlyph(p.xz,kind,fp,base,shade,worldLit);
       }else{
-        n=vec3(0,-1,0);material=4u;base=u_wallColour*.55;
-        float beam=fract(p.x*.5);shade=beam<.12?1.2:.7;glyph=beam<.12?61u:hash21(floor(p.xz*3.0))>.9?96u:32u;
+        n=vec3(0,-1,0);material=4u;
+        float beam=fract(p.x*.5);
+        if(beam<.15){
+          // Oak ceiling beam with beveled edge and iron bolts.
+          base=vec3(.42,.29,.18);
+          bool edge=beam<.03||beam>.12;
+          shade=edge?.68:1.18;
+          glyph=fract(p.z*.8)<.08?43u:(edge?45u:61u);
+        }else{
+          vec2 cf=fract(p.xz*1.2);
+          bool seam=cf.x<.06||cf.y<.06;
+          base=u_wallColour*.58;
+          shade=seam?.55:(.78+.15*hash21(floor(p.xz*1.2)));
+          glyph=seam?(cf.x<.06?124u:45u):(hash21(floor(p.xz*4.0))>.86?46u:32u);
+        }
       }
-      vec3 lit=light(p,n,base*shade);
-      fg=lit*1.3+vec3(.012);bg=lit*.3;
+      vec3 lit=worldLit?base*1.2:light(p,n,base*shade);
+      fg=lit*1.32+vec3(.015);bg=lit*.32;
     }
     // Camera-facing billboards. Negative ids are atlas frames, positive ids are single letters.
     vec3 normal=-normalize(vec3(u_forward.x,0,u_forward.z));vec3 across=normalize(vec3(u_right.x,0,u_right.z));
@@ -139,7 +202,7 @@
       glyph=letter;material=uint(info.y);flags=spriteFlags;
       tHit=t;
     }
-    float fog=1.0-exp(-tHit*.055);
+    float fog=1.0-exp(-tHit*.044);
     fg=mix(fg,u_fogColour,fog);bg=mix(bg,u_fogColour*.6,fog);
     if(tHit>=u_far){glyph=32u;fg=u_fogColour;bg=u_fogColour*.6;}
     writeCell(glyph,material,flags,tHit,fg,bg);
@@ -157,11 +220,11 @@
     constructor(canvas){
       this.atlas=global.DelveArt.build();
       this.heights=this.atlas.frames.map(frame=>frame.canvas.height);
-      this.engine=new GlyphEngine(canvas,{sceneSource:SCENE,far:40,uniforms:['map','atlas','size','eye','forward','right','up','lantern','torches','torchCount','spritePos','spriteInfo','spriteColour','spriteCount','wallColour','floorColour','fogColour']});
+      this.engine=new GlyphEngine(canvas,{sceneSource:SCENE,far:40,uniforms:['map','atlas','size','eye','forward','right','up','lantern','torches','torchCount','spritePos','spriteInfo','spriteColour','spriteCount','wallColour','floorColour','fogColour','depth']});
       const packed=this.atlas.pack();this.engine.setTexture('atlas',5,packed.width,packed.height,packed.data);
       this.mapData=null;this.spritePos=new Float32Array(MAX_SPRITES*4);this.spriteInfo=new Float32Array(MAX_SPRITES*4);this.spriteColour=new Float32Array(MAX_SPRITES*3);this.torchData=new Float32Array(MAX_TORCHES*4);
       this.eye=new Float32Array(3);this.forward=new Float32Array(3);this.right=new Float32Array(3);this.up=new Float32Array(3);
-      this._nearTorches=[];this._visibleSprites=[];this._activePalette=PALETTES[0];this._lantern=0.95;this._torchCount=0;this._spriteCount=0;
+      this._nearTorches=[];this._visibleSprites=[];this._activePalette=PALETTES[0];this._activeDepth=1;this._lantern=0.95;this._torchCount=0;this._spriteCount=0;
       this._uniformBinder=this._bindUniforms.bind(this);
     }
     resize(width,height,cellSize){this.engine.resize(width,height,cellSize);}
@@ -182,10 +245,11 @@
       gl.uniform4f(u.lantern,eye[0]+forward[0]*.2,eye[1]+.15,eye[2]+forward[2]*.2,this._lantern);
       gl.uniform4fv(u.torches,this.torchData);gl.uniform1i(u.torchCount,this._torchCount);
       gl.uniform4fv(u.spritePos,this.spritePos);gl.uniform4fv(u.spriteInfo,this.spriteInfo);gl.uniform3fv(u.spriteColour,this.spriteColour);gl.uniform1i(u.spriteCount,this._spriteCount);
-      gl.uniform3fv(u.wallColour,palette.wall);gl.uniform3fv(u.floorColour,palette.floor);gl.uniform3fv(u.fogColour,palette.fog);
+      gl.uniform3fv(u.wallColour,palette.wall);gl.uniform3fv(u.floorColour,palette.floor);gl.uniform3fv(u.fogColour,palette.fog);gl.uniform1f(u.depth,this._activeDepth);
     }
     draw(view){
       const {camera,sprites,torches,depth,time,ink,tint,dissolve}=view;
+      this._activeDepth=depth||1;
       this._activePalette=PALETTES[Math.max(0,Math.min(PALETTES.length-1,depth-1))];
       const yaw=camera.yaw,pitch=camera.pitch||0,cosP=Math.cos(pitch),sinP=Math.sin(pitch),sinY=Math.sin(yaw),cosY=Math.cos(yaw);
       this.forward[0]=sinY*cosP;this.forward[1]=sinP;this.forward[2]=-cosY*cosP;
