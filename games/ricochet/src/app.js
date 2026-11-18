@@ -429,6 +429,9 @@
             this.burst(e.x, e.y, ['*', '!'], [72, 224, 255], 8);
             if (e.side === 0) this.toast('PERFECT PARRY!');
             break;
+          case 'overcharge':
+            if (e.side === 0) { this.sound.play('bank'); this.toast('Full power! Release now.'); }
+            break;
           case 'fumble':
             this.sound.play('fumble');
             if (e.side === 0) this.toast('Overcharged! Release before the meter fills.');
@@ -474,7 +477,7 @@
     updateHud() {
       const s = this.state, court = R.COURTS[s.courtIndex];
       this.el['court-name'].textContent = `${s.courtIndex + 1}/4 · ${court.name}`;
-      this.el['rally-badge'].textContent = s.holder < 0 && s.disc.bounces > 0 ? `BANK x${s.disc.bounces}` : '';
+      this.el['rally-badge'].textContent = s.holder < 0 && s.disc.bounces > 0 ? `· BANK x${s.disc.bounces}` : '';
       this.el.scoreline.textContent = `YOU ${s.points[0]} : ${s.points[1]} RIVAL`;
       this.el.setsline.textContent = `SETS ${s.sets[0]} - ${s.sets[1]}`;
       this.el.objective.textContent = R.objective(s);

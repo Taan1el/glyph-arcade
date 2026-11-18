@@ -31,7 +31,7 @@
 
   const DIFFICULTIES = {
     easy: { label: 'Easy', reaction: 0.28, speedScale: 0.72, spinChance: 0.15, parryChance: 0, aimSmart: 0.25, predError: 2.2, dashChance: 0.15 },
-    normal: { label: 'Normal', reaction: 0.16, speedScale: 0.95, spinChance: 0.55, parryChance: 0.22, aimSmart: 0.7, predError: 0.8, dashChance: 0.6 },
+    normal: { label: 'Normal', reaction: 0.2, speedScale: 0.92, spinChance: 0.5, parryChance: 0.15, aimSmart: 0.65, predError: 1.3, dashChance: 0.5 },
     hard: { label: 'Hard', reaction: 0.08, speedScale: 1.12, spinChance: 0.8, parryChance: 0.55, aimSmart: 0.95, predError: 0.15, dashChance: 1.0 }
   };
 
@@ -247,6 +247,7 @@
     p.holdTimer = 0;
     p.charging = false;
     p.chargeTimer = 0;
+    p.overWarned = false;
     p.throwLock = fumble ? 0.45 : 0.18;
     p.justCaught = 0;
     p.parryPrime = 0;
@@ -293,8 +294,9 @@
         p.aimY = dy / ad;
       }
     } else if (Math.abs(ny) > 0.1) {
-      p.aimX = dirSign * Math.sqrt(Math.max(0.25, 1 - ny * ny * 0.72));
-      p.aimY = ny * 0.85;
+      // Keys give a full up or down; aim a moderate angle rather than straight into the side wall.
+      p.aimY = ny * 0.55;
+      p.aimX = dirSign * Math.sqrt(1 - p.aimY * p.aimY);
     } else if (state.holder === p.side) {
       p.aimX = dirSign;
       p.aimY *= 0.85;
@@ -318,13 +320,17 @@
       if (input.throwHeld) {
         p.charging = true;
         p.chargeTimer += STEP;
-        if (p.chargeTimer >= 1.25) {
+        // Full power at one second, a warning, then a fumble if still held.
+        if (p.chargeTimer >= 1.0 && !p.overWarned) { p.overWarned = true; events.push({ type: 'overcharge', side: p.side }); }
+        if (p.chargeTimer >= 1.6) {
           launchDisc(state, p, { fumble: true, events });
           return;
         }
       }
-      if (spinTap || input.throwRelease || (p.charging && !input.throwHeld) || p.holdTimer >= 3.0) {
-        const autoFumble = p.holdTimer >= 3.0 && !input.throwRelease && !spinTap;
+      // The 3s hold limit only applies while not charging; a held charge has its own overcharge rule.
+      const heldTooLong = p.holdTimer >= 3.0 && !p.charging;
+      if (spinTap || input.throwRelease || (p.charging && !input.throwHeld) || heldTooLong) {
+        const autoFumble = heldTooLong && !input.throwRelease && !spinTap;
         if (autoFumble) {
           launchDisc(state, p, { fumble: true, events });
           return;

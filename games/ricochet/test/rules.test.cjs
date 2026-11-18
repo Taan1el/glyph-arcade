@@ -72,15 +72,18 @@ test('Catching, charging, overcharge fumble, and frame-window parry work as spec
   // Catch and charge -> launch
   const s1 = R.newGame('charge', 'striker', 'easy');
   tick(s1, { throwHeld: true }, 30);
-  assert.equal(s1.holder, 0, 'still holding while charging under 1.25s');
+  assert.equal(s1.holder, 0, 'still holding while charging under 1.6s');
   assert(s1.players[0].chargeTimer >= 0.45, 'charge timer accumulated');
   const launchEv = tick(s1, { throwRelease: true }, 1);
   assert(launchEv.some(e => e.type === 'throw' && e.charged), 'release threw a charged disc');
 
-  // Overcharge fumble (>= 1.25s)
+  // Full power at 1s brings a warning; still holding at 1.6s fumbles
   const s2 = R.newGame('fumble', 'striker', 'easy');
-  const fEv = tick(s2, { throwHeld: true }, 80);
-  assert(fEv.some(e => e.type === 'fumble' && e.side === 0), 'holding throw >= 1.25s fumbles the disc');
+  const warnEv = tick(s2, { throwHeld: true }, 70);
+  assert(warnEv.some(e => e.type === 'overcharge' && e.side === 0), 'full power warns before the fumble');
+  assert(!warnEv.some(e => e.type === 'fumble'), 'no fumble yet at 1.17s');
+  const fEv = tick(s2, { throwHeld: true }, 40);
+  assert(fEv.some(e => e.type === 'fumble' && e.side === 0), 'holding throw past 1.6s fumbles the disc');
   assert.equal(s2.holder, -1);
 
   // Frame-window parry on incoming disc
