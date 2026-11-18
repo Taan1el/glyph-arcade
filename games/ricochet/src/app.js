@@ -312,9 +312,17 @@
 
     resize() {
       const narrow = global.innerWidth < 700;
-      const base = narrow ? (global.innerWidth < 450 ? [5, 8] : [6, 9]) : [8, 12];
+      // The smallest letters that still read as letters; the court's tiles carry the detail.
+      const base = narrow ? [3, 5] : [4, 6];
+      const { TILE_H } = global.RicochetView;
+      // Keep the whole court below the status panel, even when quality makes cells larger.
+      const top = this.el.stats && !this.el.hud.hidden ? Math.ceil(this.el.stats.getBoundingClientRect().bottom) + 6 : 0;
+      let cell = this.quality.cell(base);
+      const fit = Math.floor((global.innerHeight - top - 8) / (R.HEIGHT * TILE_H));
+      if (fit >= 4 && cell[1] > fit) cell = [Math.max(3, Math.round(fit * cell[0] / cell[1])), fit];
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
-      this.view.resize(global.innerWidth, global.innerHeight, this.quality.cell(base));
+      this.view.resize(global.innerWidth, global.innerHeight, cell);
+      this.view.topOffset = Math.round(top / cell[1] / 2);
     }
 
     show(mode) {
@@ -324,6 +332,7 @@
       this.sound.updateCharge(0, false);
       for (const name of ['title', 'pause', 'help', 'end']) this.el[name].hidden = mode !== name;
       this.el.hud.hidden = mode === 'title' || mode === 'end';
+      if (mode === 'play') this.resize();
       document.body.dataset.mode = mode;
       if (mode === 'title') this.refreshTitle();
       if (was === 'play' && mode === 'pause') this.save();
@@ -546,27 +555,23 @@
       }
       if (state.disc) {
         const d = state.disc, at = toCell(d.x, d.y);
-        if (state.holder < 0 && d.bounces >= 2) {
-          sprites.push({ x: at.x - 1, y: at.y - 1, frame: 'discCrit' });
-        } else if (state.holder < 0 && d.charged) {
-          sprites.push({ x: at.x - 1, y: at.y - 1, frame: 'discHalo' });
-        } else {
-          sprites.push({ x: at.x, y: at.y, char: state.holder < 0 && d.bounces > 0 ? '*' : '@', colour: d.bounces > 0 ? [255, 146, 43] : [255, 224, 85] });
-        }
+        const art = state.holder < 0 && d.bounces >= 2 ? 'discCrit' : state.holder < 0 && d.charged ? 'discHalo' : 'disc';
+        sprites.push({ x: at.x - 2, y: at.y - 1, art, lit: true });
       }
       const bob = Math.floor(this.time * 8) % 2 === 1;
       for (const p of state.players) {
         const moving = Math.hypot(p.vx, p.vy) > 1.2;
         const pose = p.dashTimer > 0 ? 'dash' : state.holder === p.side ? 'hold' : p.throwLock > 0.06 ? 'throw' : moving ? (bob ? 'walkB' : 'walkA') : 'idle';
-        const at = toCell(p.x, p.y);
+        const { w, h } = this.view.size(`${p.kind}.${pose}`), at = toCell(p.x, p.y);
         const bar = state.holder === p.side && p.charging
           ? { fill: p.chargeTimer / 1.0, colour: p.chargeTimer > 1.0 ? [255, 68, 56] : [255, 224, 85] }
           : null;
         sprites.push({
-          x: at.x - 1,
-          y: at.y - 1,
-          frame: `${p.kind}.${pose}${p.side === 1 ? '.left' : ''}`,
-          team: p.side === 0 ? [72, 208, 255] : [255, 90, 78],
+          x: at.x - Math.floor(w / 2),
+          y: at.y - h + 3,
+          art: `${p.kind}.${pose}`,
+          flip: p.side === 1,
+          tint: p.side === 0 ? [72, 208, 255] : [255, 90, 78],
           flash: p.stunTimer > 0 && bob,
           bar
         });

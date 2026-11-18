@@ -16,7 +16,7 @@ const GAMES=[
   {id:'bannerfall',title:'Bannerfall',tagline:'Choose a hero, hold three lanes and burn the rival banner.',
    parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','engine/glyph-sprites.js','games/bannerfall/src/art.js','games/bannerfall/src/rules.js','games/bannerfall/src/scene.js','games/bannerfall/src/app.js'],shell:'games/bannerfall/src/shell.html'},
   {id:'ricochet',title:'Ricochet',tagline:'Catch the glowing disc, curve spin shots and shatter your rival\'s shields in four neon courts.',
-   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/ricochet/src/rules.js','games/ricochet/src/scene.js','games/ricochet/src/app.js'],shell:'games/ricochet/src/shell.html'},
+   parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','engine/glyph-art.js','engine/glyph-sprites.js','games/ricochet/src/art.js','games/ricochet/src/rules.js','games/ricochet/src/scene.js','games/ricochet/src/app.js'],shell:'games/ricochet/src/shell.html'},
   {id:'lockwork',title:'Lockwork',tagline:'Slide brass conduits, rotate mirrors and time signal pulses across 30 clockwork vaults.',
    parts:['engine/glyph-engine.js','engine/glyph-input.js','engine/glyph-quality.js','games/lockwork/src/rules.js','games/lockwork/src/scene.js','games/lockwork/src/app.js'],shell:'games/lockwork/src/shell.html'},
   {id:'irongrid',title:'Irongrid',tagline:'Command three steam-walkers, shove foes into hazards and defend the power grid across four sectors.',
