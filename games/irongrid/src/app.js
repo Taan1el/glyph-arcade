@@ -291,8 +291,9 @@
       }
       const objR = this.el['obj-line']?.parentElement?.getBoundingClientRect();
       const hotR = this.el.hotbar ? this.el.hotbar.getBoundingClientRect() : null;
-      const topBand = (objR && objR.height > 0) ? Math.ceil(objR.bottom + 6) : (w < 720 ? 142 : 84);
-      const botBand = (hotR && hotR.height > 0) ? Math.ceil(h - hotR.top + 6) : (w < 720 ? 112 : 68);
+      const measuredTop = Math.max(statsR && statsR.height > 0 ? statsR.bottom : 0, objR && objR.height > 0 ? objR.bottom : 0);
+      const topBand = measuredTop > 0 ? Math.ceil(measuredTop + 8) : (w < 720 ? 148 : 114);
+      const botBand = (hotR && hotR.height > 0) ? Math.ceil(h - hotR.top + 8) : (w < 720 ? 112 : 68);
       const availW = Math.max(200, w - 16);
       const availH = Math.max(140, h - topBand - botBand);
 
@@ -301,7 +302,7 @@
       ch = Math.min(ch, Math.round(cw * 1.8));
       cw = Math.min(cw, Math.max(4, Math.round(ch * 0.72)));
       const cell = this.quality.cell([cw, ch]);
-      const shiftCells = Math.round(((topBand - botBand) * 0.5) / cell[1]);
+      const shiftCells = Math.round((topBand - botBand) / cell[1]);
 
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
       this.view.resize(w, h, cell, shiftCells);
