@@ -328,7 +328,7 @@
     resize() {
       const narrow = global.innerWidth < 700;
       this.view.engine.maxDpr = this.quality.setting.maxDpr;
-      this.view.resize(global.innerWidth, global.innerHeight, this.quality.cell(narrow ? [7, 10] : [8, 12]));
+      this.view.resize(global.innerWidth, global.innerHeight, this.quality.cell([4, 6]));
     }
 
     show(mode) {
@@ -789,21 +789,22 @@
       list.sort((a, b) => b.y - a.y);
       const bob = u => Math.floor(this.time * 4 + u.id * 0.37) % 2 === 1;
       for (const u of list) {
-        let frame, w, h, dy;
-        if (u.type === 'hero') { frame = u.kind + (u.anim > 0 ? 'A' : u.moving && bob(u) ? 'B' : ''); w = 3; h = 3; dy = 2.2; }
-        else if (u.type === 'minion') { frame = u.kind + (u.moving && bob(u) ? 'B' : ''); w = u.kind === 'siege' ? 3 : 2; h = 2; dy = 1.3; }
-        else if (u.type === 'tower') { frame = B.alive(u) ? 'tower' : 'rubble'; w = 3; h = 4; dy = 3.2; }
-        else if (u.type === 'banner') { frame = Math.floor(this.time * 1.5) % 2 ? 'bannerB' : 'banner'; w = 5; h = 5; dy = 4; }
-        else if (u.type === 'beast') { frame = u.moving && bob(u) ? 'beastB' : 'beast'; w = 3; h = 2; dy = 1.3; }
-        else if (u.type === 'colossus') { frame = u.anim > 0 ? 'colossusB' : 'colossus'; w = 7; h = 4; dy = 3; }
+        let art, feet;
+        // Art stands with its feet a little below the unit's centre, as if seen from above at an angle.
+        if (u.type === 'hero') { art = u.kind + (u.anim > 0 ? 'A' : u.moving && bob(u) ? 'B' : ''); feet = 0.45; }
+        else if (u.type === 'minion') { art = u.kind + (u.moving && bob(u) ? 'B' : ''); feet = 0.35; }
+        else if (u.type === 'tower') { art = B.alive(u) ? 'tower' : 'rubble'; feet = 0.8; }
+        else if (u.type === 'banner') { art = Math.floor(this.time * 1.5) % 2 ? 'bannerB' : 'banner'; feet = 1.1; }
+        else if (u.type === 'beast') { art = u.moving && bob(u) ? 'beastB' : 'beast'; feet = 0.4; }
+        else if (u.type === 'colossus') { art = u.anim > 0 ? 'colossusB' : 'colossus'; feet = 1.2; }
         else continue;
-        const at = { x: Math.round(u.x * TILE_W - w / 2), y: Math.round(u.y * TILE_H - dy) - cam.y };
-        at.x -= cam.x;
+        const { w, h } = this.view.size(art);
+        const at = { x: Math.round(u.x * TILE_W - w / 2) - cam.x, y: Math.round((u.y + feet) * TILE_H) - h - cam.y };
         if (!onScreen(at, w, h)) continue;
         const facing = u.type === 'banner' ? (u.team === 0 ? 1 : -1) : u.facing;
         const bar = B.alive(u) && (u.hp < u.maxHp || u.type === 'hero' || u.type === 'tower' || u.type === 'banner')
           ? { fill: u.hp / u.maxHp, colour: u.player ? BAR.self : u.team === 0 ? BAR.ally : u.team === 1 ? BAR.foe : BAR.neutral } : null;
-        sprites.push({ x: at.x, y: at.y, frame: facing < 0 ? frame + '.left' : frame, team: TEAM[u.team], flash: u.flash > 0.08, shade: u.invisible > 0, bar });
+        sprites.push({ x: at.x, y: at.y, art, flip: facing < 0, tint: TEAM[u.team], flash: u.flash > 0.08, shade: u.invisible > 0, bar });
       }
       return sprites;
     }
