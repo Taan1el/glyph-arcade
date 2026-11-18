@@ -613,36 +613,44 @@
     }
 
     pollPad() {
-      const p = this.pad.read();
-      if (!p.connected) return;
-      if (p.pressed[9]) {
+      const pad = this.pad;
+      pad.poll();
+      if (!pad.connected) return;
+      if (pad.pressed(9)) {
         if (this.mode === 'play') { this.show('pause'); return; }
         if (this.mode === 'pause') { this.show('play'); return; }
         if (this.mode === 'title') { this.newGame(); return; }
       }
       if (this.mode !== 'play') return;
-      const sx = p.axes[0] || (p.buttons[15] ? 1 : p.buttons[14] ? -1 : 0);
-      const sy = p.axes[1] || (p.buttons[13] ? 1 : p.buttons[12] ? -1 : 0);
-      if (sx && !this.padStick.x) this.moveCursor(Math.sign(sx), 0);
-      if (sy && !this.padStick.y) this.moveCursor(0, Math.sign(sy));
-      this.padStick.x = sx;
-      this.padStick.y = sy;
-
-      if (p.pressed[0]) this.confirmCursor();
-      if (p.pressed[1]) {
+      if (pad.pressed(0)) this.confirmCursor();
+      if (pad.pressed(1)) {
         if (this.state.selectedCardIndex >= 0) this.act({ selectCard: -1 });
         else this.act({ undoMove: true });
       }
-      if (p.pressed[4] || p.pressed[5]) this.act({ cycleRig: true });
-      if (p.pressed[2] || p.pressed[3]) {
+      if (pad.pressed(4) || pad.pressed(5)) this.act({ cycleRig: true });
+      if (pad.pressed(2) || pad.pressed(3)) {
         const nextIdx = (this.state.selectedCardIndex + 1) % Math.max(1, this.state.hand.length);
         this.selectCard(nextIdx);
       }
-      if (p.pressed[8]) this.finishTurn();
+      if (pad.pressed(8)) this.finishTurn();
+
+      if (pad.pressed(12)) { this.moveCursor(0, -1); return; }
+      if (pad.pressed(13)) { this.moveCursor(0, 1); return; }
+      if (pad.pressed(14)) { this.moveCursor(-1, 0); return; }
+      if (pad.pressed(15)) { this.moveCursor(1, 0); return; }
+
+      const sx = Math.abs(pad.axis(0)) > 0.55 ? Math.sign(pad.axis(0)) : 0;
+      const sy = Math.abs(pad.axis(1)) > 0.55 ? Math.sign(pad.axis(1)) : 0;
+      if (sx && !this.padStick.x) this.moveCursor(sx, 0);
+      else if (sy && !this.padStick.y) this.moveCursor(0, sy);
+      this.padStick.x = sx;
+      this.padStick.y = sy;
     }
 
     frame(now) {
-      const dt = Math.min(0.05, (now - this.last) / 1000);
+      const rawMs = now - this.last;
+      const dt = Math.min(0.05, Math.max(0.001, rawMs / 1000));
+      this.quality.sample(rawMs);
       this.last = now;
       if (!this.reducedMotion) this.time += dt;
       this.pollPad();
@@ -655,7 +663,6 @@
       const active = this.state || this.demo;
       const { preview, tile } = this.mode === 'play' ? this.currentPreview() : { preview: null, tile: null };
       this.view.draw({ state: active, time: this.time, tint: this.tint, preview, previewTile: tile });
-      this.quality.sample(dt);
       requestAnimationFrame(this.frame);
     }
 

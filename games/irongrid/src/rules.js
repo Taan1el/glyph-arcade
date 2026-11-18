@@ -978,8 +978,15 @@
       drawCards(state, HAND_SIZE);
     }
 
-    // Auto-select first standing rig
-    selectNextReadyRig(state, true);
+    // Auto-select first standing rig and place cursor on it
+    for (i = 0; i < state.rigs.length; i++) {
+      if (state.rigs[i].hp > 0) {
+        state.selectedRigId = state.rigs[i].id;
+        state.cursorX = state.rigs[i].x;
+        state.cursorY = state.rigs[i].y;
+        break;
+      }
+    }
     state.selectedCardIndex = -1;
   }
 
